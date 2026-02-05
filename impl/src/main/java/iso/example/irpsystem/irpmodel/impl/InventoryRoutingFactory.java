@@ -13,7 +13,8 @@ import devs.PDevsCouplings;
 import devs.SimulatorProvider;
 import devs.iso.time.LongSimTime;
 import devs.proxy.KafkaLocalProxy.ProxyProperties;
-import devs.proxy.KafkaLocalProxy.KafkaProxySimulatorProvider;
+import devs.proxy.KafkaDevsStreamProxyProvider;
+import devs.proxy.KafkaReceiver;
 import devs.utils.ImmutableSchedule;
 import devs.utils.Schedule;
 import iso.example.irpsystem.irpdomain.Coordinate;
@@ -37,7 +38,7 @@ import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
 
     private final IrpData irpData;
-    private final Map<String, String> remoteModelTopics = new HashMap<>();
+    private final Map<String, RemoteModel> remoteModels = new HashMap<>();
     Config kafkaConsumerConfig;
     Config kafkaProducerConfig;
 
@@ -45,10 +46,10 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
         this.irpData = irpData;
     }
 
-    public InventoryRoutingFactory(IrpData irpData, Map<String, String> remoteModelTopics,
+    public InventoryRoutingFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
         Config kafkaConsumerConfig, Config kafkaProducerConfig) {
         this.irpData = irpData;
-        this.remoteModelTopics.putAll(remoteModelTopics);
+        this.remoteModels.putAll(remoteModels);
         this.kafkaConsumerConfig = kafkaConsumerConfig;
         this.kafkaProducerConfig = kafkaProducerConfig;
     }
@@ -110,7 +111,7 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
         return retailers;
     }
 
-    protected Retailer buildRetailer(RetailerData retailerData) {
+    public static Retailer buildRetailer(RetailerData retailerData) {
         ImmutableRetailerState retailerState = ImmutableRetailerState.builder()
             .currentInventory(retailerData.startingInventory())
             .currentTime(LongSimTime.create(0))
@@ -135,11 +136,9 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
         for (int i = 0; i < irpData.retailers().size(); i++) {
             RetailerData retailerData = irpData.retailers().get(i);
             String componentName = "retailer" + retailerData.id();
-            if (remoteModelTopics.containsKey(componentName)) {
-                String topic = remoteModelTopics.get(componentName);
-                ProxyProperties proxyProperties = new ProxyProperties(componentName, topic, kafkaProducerConfig, topic, kafkaConsumerConfig);
-                KafkaProxySimulatorProvider<LongSimTime> proxyProvider = 
-                    new KafkaProxySimulatorProvider<>(proxyProperties);
+            if (remoteModels.containsKey(componentName)) {
+                String topic = remoteModels.get(componentName).topic();
+                KafkaDevsStreamProxyProvider<LongSimTime> proxyProvider = new KafkaDevsStreamProxyProvider<>(componentName, topic, kafkaProducerConfig);    
                 retailerProviders.add(proxyProvider);
             } else {
                 retailerProviders.add(buildRetailer(retailerData).getDevsSimulatorProvider());
@@ -155,6 +154,15 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
         simulatorProviders.addAll(buildManufacturers().stream().map(v -> v.getDevsSimulatorProvider()).toList());
         PDevsCouplings couplings = new PDevsCouplings(List.of(new InventoryRoutingInputCouplingHandler()), 
             List.of(new MultipleVehicleOutputCouplingHandler()));
+        if (!remoteModels.isEmpty()) {
+            return new InventoryRoutingCoupledModelFactory(
+                InventoryRouting.modelIdentifier, 
+                simulatorProviders, 
+                couplings,
+                kafkaConsumerConfig,
+                ""
+                );
+        }
         return new CoupledModelFactory<>(InventoryRouting.modelIdentifier, simulatorProviders, couplings);
     }
 

@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
 
 class VehicleImplTest extends AbstractVehicleTest<VehicleImplTest.VehicleAcceptorState> {
 
-  static Path path = Paths.get("src/test/resources/S_abs1n5_2_L3.json");
+  static Path path = Paths.get("src/main/resources/S_abs1n5_2_L3.json");
   static IrpData irpData = IrpData.read(path);
 
   public static ImmutableDeliverySchedule buildDeliverySchedule() {

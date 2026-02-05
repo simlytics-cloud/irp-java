@@ -1,5 +1,6 @@
 package iso.example.irpsystem.irpmodel.impl;
 
+import com.typesafe.config.Config;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,9 +35,21 @@ import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 public class ExperimentalFrameFactory extends AbstractExperimentalFrameFactory {
 
     protected final IrpData irpData;
+    private final Map<String, RemoteModel> remoteModels = new HashMap<>();
+    Config kafkaConsumerConfig;
+    Config kafkaProducerConfig;
 
     public ExperimentalFrameFactory(IrpData irpData) {
         this.irpData = irpData;
+    }
+
+    public ExperimentalFrameFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
+        Config kafkaConsumerConfig,
+        Config kafkaProducerConfig) {
+        this.irpData = irpData;
+        this.kafkaConsumerConfig = kafkaConsumerConfig;
+        this.kafkaProducerConfig = kafkaProducerConfig;
+        this.remoteModels.putAll(remoteModels);
     }
 
     @Override
@@ -99,7 +112,13 @@ public class ExperimentalFrameFactory extends AbstractExperimentalFrameFactory {
 
     @Override
     protected AbstractInventoryRoutingFactory buildInventoryRoutingFactory() {
-        InventoryRoutingFactory inventoryRoutingFactory = new InventoryRoutingFactory(irpData);
+        InventoryRoutingFactory inventoryRoutingFactory;
+        if (kafkaConsumerConfig != null && kafkaProducerConfig != null) {
+            inventoryRoutingFactory = new InventoryRoutingFactory(irpData, remoteModels,
+                kafkaConsumerConfig, kafkaProducerConfig);
+        } else  {
+            inventoryRoutingFactory = new InventoryRoutingFactory(irpData);
+        }
         return inventoryRoutingFactory;
     }
 

@@ -3,7 +3,7 @@
   "numTimePeriods": 3,
   "vehicleCapacity": 144.0,
   "vehicleCostPerKm": 1.0,
-  "vehicleSpeekKmHr": 75.0,
+  "vehicleSpeekKmHr": 150.0,
   "numVehicles": 2,
   "manufacturer": {
     "id": 0,

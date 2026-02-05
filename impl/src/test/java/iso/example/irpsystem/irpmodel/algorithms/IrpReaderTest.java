@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 public class IrpReaderTest {
 
-public static Path path = Paths.get("src/test/resources/S_abs1n5_2_L3.json");
+public static Path path = Paths.get("src/main/resources/S_abs1n5_2_L3.json");
 public static IrpData irpData = IrpData.read(path);
 
   @Test

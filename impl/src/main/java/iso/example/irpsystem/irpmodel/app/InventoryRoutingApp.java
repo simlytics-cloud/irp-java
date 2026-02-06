@@ -88,8 +88,8 @@ public class InventoryRoutingApp {
                 .map(RemoteModel::topic)
                 .distinct()
                 .toList();
-            KafkaUtils.createTopics(topics, adminClient, Optional.of(1), Optional.empty());
-            Thread.sleep(5000);
+            //KafkaUtils.createTopics(topics, adminClient, Optional.of(1), Optional.empty());
+            //Thread.sleep(5000);
         }
 
         InventoryRoutingApp inventoryRoutingApp = new InventoryRoutingApp(irpData, remoteModels);

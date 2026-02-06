@@ -108,30 +108,31 @@ public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
         for (String modelId : remoteModels.keySet()) {
             if (modelId.startsWith("retailer")) {
                 RemoteModel remoteModel = remoteModels.get(modelId);
+                    if (remoteModel.runJava()) {
+                    // Create a proxy for the coordinator if it doesn't exist
+                    if (!coordinatorProxies.containsKey(remoteModel.topic())) {
+                        ActorRef<DevsMessage> coordinatorProxy =
+                            getContext().spawn(
+                                KafkaDevsStreamProxy.create(InventoryRouting.modelIdentifier,
+                                    "irp-system",
+                                    kafkaClusterConfig), "inventoryRoutingCoordinatorProxy");
+                        coordinatorProxies.put(remoteModel.topic(), coordinatorProxy);
+                    }
 
-                // Create a proxy for the coordinator if it doesn't exist
-                if (!coordinatorProxies.containsKey(remoteModel.topic())) {
-                    ActorRef<DevsMessage> coordinatorProxy =
-                        getContext().spawn(
-                            KafkaDevsStreamProxy.create(InventoryRouting.modelIdentifier,
-                                "irp-system",
-                                kafkaClusterConfig), "inventoryRoutingCoordinatorProxy");
-                    coordinatorProxies.put(remoteModel.topic(), coordinatorProxy);
+                    // Create the retailer
+                    char retailerId = modelId.charAt(modelId.length() - 1);
+                    int retailerIndex = Integer.parseInt(String.valueOf(retailerId)) - 1;
+                    Retailer retailer = InventoryRoutingFactory.buildRetailer(irpData.retailers()
+                        .get(retailerIndex));
+
+                    ActorRef<DevsMessage> retailerSimulator = getContext().spawn(
+                        PDevsSimulator.create(retailer, LongSimTime.create(0)), modelId + "Simulator");
+
+
+                    ActorRef<DevsMessage> retailerReceiver = getContext().spawn(
+                        KafkaReceiver.create(retailerSimulator, coordinatorProxies.get(remoteModel.topic()), modelId, kafkaConsumerConfig,
+                            remoteModel.topic()), modelId + "Receiver");
                 }
-
-                // Create the retailer
-                char retailerId = modelId.charAt(modelId.length() - 1);
-                int retailerIndex = Integer.parseInt(String.valueOf(retailerId)) - 1;
-                Retailer retailer = InventoryRoutingFactory.buildRetailer(irpData.retailers()
-                    .get(retailerIndex));
-
-                ActorRef<DevsMessage> retailerSimulator = getContext().spawn(
-                    PDevsSimulator.create(retailer, LongSimTime.create(0)), modelId + "Simulator");
-
-
-                ActorRef<DevsMessage> retailerReceiver = getContext().spawn(
-                    KafkaReceiver.create(retailerSimulator, coordinatorProxies.get(remoteModel.topic()), modelId, kafkaConsumerConfig,
-                        remoteModel.topic()), modelId + "Receiver");
             }
         }
 

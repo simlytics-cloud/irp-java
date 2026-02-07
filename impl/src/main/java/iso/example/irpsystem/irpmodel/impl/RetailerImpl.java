@@ -11,29 +11,94 @@ import iso.example.irpsystem.irpdomain.ImmutableInventoryCost;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableRetailerProperties;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableRetailerState;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
-import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
+/**
+ * 
+ * Implementation of a Retailer for the Inventory Routing Problem.  Before coding, take a look at 
+ * the generated Retailer class in the generated module, its parent class, Facility, and finally
+ * its parent, the ScheduledDevsModel in the DEVS Streaming Framework. 
+ * 
+ * The ScheduledDevsModel has an internal state that extends ScheduleState.  This means
+ * that its state includes both a Schedule and the current time.  This allows it to
+ * provide implementations of the time advance and output functions.  Time advance 
+ * returns the interval between the current time and the first item on the schedule.
+ * The output function returns a bag of all PortValues on the schedule for the current time.
+ * The schedule allows a developer to create inner classes for their internal events
+ * then add them to the schedule them as follows, as in the constructor to schedule
+ * the first day's opening.
+ *     modelState.getSchedule().scheduleInternalEvent(LongSimTime.create(60 * 6), 
+ *       new OpenEvent());
+ * Similarly, outputs can be added as follows, to generate an inventory cost output
+ * on the dailyInventoryCost port.
+ *     modelState.getSchedule().scheduleOutput(currentTime, Retailer.dailyInventoryCost, 
+ *       immutableInventoryCost);
+ * For a ScheduledDevsModel, it is important to update the current time at 
+ * each state transition.  For an external transition, just add the elapsed
+ * time to the current time.  For the internal state transition, call the
+ * time advance function to get the elapsed time, then add it to the
+ * current time.  Another requirement in the internal state transition is
+ * to remove the currently scheduled output from the schedule.  Since the output
+ * function is called immmendiately prior to the internal state transition, the output
+ * has already been sent.  Removing it from the schedule ensure proper operation of the
+ * schedule and prevents repeatedly generating the scheduled output.Failure to properly 
+ * handle time or scheduled outputs will lead to some difficult to find errors in behavior.
+ * The first few lines of the internal state transition are provided for you to
+ * ensure this handling is done properly.
+ * 
+ * The Facility class is a simple placeholder parent that shares common state value
+ * and properties between the Retailer and the Manufacturer, which both extend
+ * Facility.
+ * 
+ * Finally, the Retailer has an external state transition that first properly increment
+ * current time.  Then it handles the incoming PortVales by port name and type,  
+ * Sending the resultant inputs to 
+ *     handleReceiveDelivery(ImmutableDelivery immutableDelivery, LongSimTime elapsedTime);
+ * So the required remainig tasks are to fully implement the handling of a delivery,
+ * the internal state transition, and the confluent state transition. The pulling of internal
+ * events from the schedule and looping over them is also provided for you in the internal
+ * state transition.
+ * 
+ * Finally, time is of the type LongSimTime.  Use the getT() method to get a time
+ * value rperesenting minutes since simulation start.
+ * 
+ * For general reference, take a look at the VehicleImpl and ManufacturerImple
+ * classes that have implementations already completed.  Additional examples are in 
+ * the DEVS Streaming Framework example and test implementations of DEVS models.
+ */
 public class RetailerImpl extends Retailer {
 
-    static record UpdateInventoryEvent() {
-    }
+    static record CloseEvent() {}
+    static record OpenEvent() {}
 
     public RetailerImpl(ImmutableRetailerState initialState, String modelIdentifier,
             ImmutableRetailerProperties properties) {
         super(initialState, modelIdentifier, properties);
         modelState.setCurrentInventory(properties.getFacilityProperties().getStartingInventory());
-        modelState.getSchedule().scheduleInternalEvent(TimeUtils.durationToSimTime(TimeUtils.CLOSING_DURATION), new UpdateInventoryEvent());
+        modelState.getSchedule().scheduleInternalEvent(LongSimTime.create(60 * 6), new OpenEvent());
     }
 
+    /**
+     * Implement the curect state updates here for receiving a delivery.  Remember, current time
+     * has already been updated in the Retailer parent class.
+     */
     @Override
     protected void handleReceiveDelivery(ImmutableDelivery immutableDelivery, LongSimTime elapsedTime) {
         modelState.setCurrentInventory(modelState.getCurrentInventory() + immutableDelivery.getProductAmount());
     }
 
+    /**
+     * Implement the correct behavior here for the internal state transition.  
+     */
     @Override
-    public void handleScheduledEvents(List<Object> events) {
-        for (Object event: events) {
-            if (event instanceof UpdateInventoryEvent) {
+    public void internalStateTransitionFunction() {
+        LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
+        modelState.setCurrentTime(currentTime);
+        modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
+        for (Object event: modelState.getSchedule().removeCurrentScheduledEvents(currentTime)) {
+            if (event instanceof CloseEvent) {
+                // Reduce inventor by the daily consumption
+                modelState.setCurrentInventory(modelState.getCurrentInventory() 
+                    - properties.getDailyConsumption());
                 // Verify inventory is under max amount
                 if (modelState.getCurrentInventory() > properties.getMaxInventory()) {
                     simulator.getContext().getLog().error
@@ -41,9 +106,6 @@ public class RetailerImpl extends Retailer {
                         + " with inventory " + modelState.getCurrentInventory() 
                         + " exceeded max inventory of " + properties.getMaxInventory());
                 }
-                // Reduce inventor by the daily consumption
-                modelState.setCurrentInventory(modelState.getCurrentInventory() 
-                    - properties.getDailyConsumption());
                 // Verify inventory is under min amount
                 if (modelState.getCurrentInventory() < properties.getMinInventory()) {
                     simulator.getContext().getLog().error("Retailer " + properties.getRetailerId() 
@@ -54,7 +116,7 @@ public class RetailerImpl extends Retailer {
                 // Report inventory costs
                 double cost = modelState.getCurrentInventory() 
                     * properties.getFacilityProperties().getInventoryCost();
-                int day = (int) TimeUtils.simTimeToDuration(modelState.getCurrentTime()).toDaysPart() + 1;
+                int day = (modelState.getCurrentTime().getT().intValue()) / (60 * 24) + 1;
                 ImmutableInventoryCost immutableInventoryCost = ImmutableInventoryCost.builder()
                     .retailerId(properties.getRetailerId())
                     .cost(cost)
@@ -62,11 +124,12 @@ public class RetailerImpl extends Retailer {
                     .build();
                 modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Retailer.dailyInventoryCost, immutableInventoryCost);
 
-                // Schedule the next update
-                LongSimTime nextUpdateTime = modelState.getCurrentTime()
-                    .plus(TimeUtils.durationToSimTime(Duration.ofDays(1)));
-                modelState.getSchedule().scheduleInternalEvent(nextUpdateTime,
-                    new UpdateInventoryEvent());
+                // Schedule the opening
+                LongSimTime nextUpdateTime = LongSimTime.create(currentTime.getT() + (60 * 14));  // Open at 6 AM
+                modelState.getSchedule().scheduleInternalEvent(nextUpdateTime, new OpenEvent());
+            } else if (event instanceof OpenEvent) {
+                LongSimTime nextUpdateTime = LongSimTime.create(currentTime.getT() + (60 * 10));  // Close at 4pm
+                modelState.getSchedule().scheduleInternalEvent(nextUpdateTime, new CloseEvent());                
             } else {
                 throw new IllegalArgumentException("Event of type " + event.getClass().getCanonicalName() 
                     + " is not expected by RetailerImpl");
@@ -74,6 +137,10 @@ public class RetailerImpl extends Retailer {
         }
     }
 
+    /**
+     * Implement the correct behavior for the confluent state transition, where external inputs
+     * arrive at the same time as a scheduled internal transition.
+     */
     @Override
     public void confluentStateTransitionFunction(List<PortValue<?>> inputs) {
         internalStateTransitionFunction();

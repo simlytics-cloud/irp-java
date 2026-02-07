@@ -74,7 +74,7 @@ public class RetailerImpl extends Retailer {
                     .cost(cost)
                     .day(day)
                     .build();
-                //modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Retailer.dailyInventoryCost, immutableInventoryCost);
+                modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Retailer.dailyInventoryCost, immutableInventoryCost);
 
                 // Schedule the opening
                 LongSimTime nextUpdateTime = LongSimTime.create(modelState.getCurrentTime().getT() + (60 * 14));  // Open at 6 AM

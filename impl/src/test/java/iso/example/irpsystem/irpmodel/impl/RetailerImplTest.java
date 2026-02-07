@@ -132,6 +132,7 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
                         fail("Did not complete Day 1 cost accounting");
                     }
                     acceptorState.completedDay2 = true;
+                    acceptorState.completedDay2 = true;
                     System.out.println("Retailer test completed successfully");
                 }
             } else {

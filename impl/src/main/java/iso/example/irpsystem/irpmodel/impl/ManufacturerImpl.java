@@ -1,5 +1,6 @@
 package iso.example.irpsystem.irpmodel.impl;
 
+import devs.utils.Schedule.ScheduledEvent;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -19,8 +20,10 @@ import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
 public class ManufacturerImpl extends Manufacturer {
 
-    protected record UpdateInventory() {}
-    protected record PostDelveryRoute(ImmutableDeliveryRoute immutableDeliveryRoute) {};
+    protected record UpdateInventory() {
+    }
+    protected record PostDelveryRoute(ImmutableDeliveryRoute immutableDeliveryRoute) {
+    };
 
     public ManufacturerImpl(ImmutableManufacturerState initialState,
             ImmutableManufacturerProperties properties) {
@@ -31,11 +34,9 @@ public class ManufacturerImpl extends Manufacturer {
     }
 
     @Override
-    public void internalStateTransitionFunction() {
-        LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
-        modelState.setCurrentTime(currentTime);
-        modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
-        for (Object event: modelState.getSchedule().removeCurrentScheduledEvents(currentTime)) {
+    public void handleScheduledEvents(List<Object> events) {
+
+        for (Object event:events) {
             if (event instanceof UpdateInventory) {
                 // Increase inventory by production amount
                 modelState.setCurrentInventory(modelState.getCurrentInventory() 
@@ -50,23 +51,23 @@ public class ManufacturerImpl extends Manufacturer {
                 // Report inventory costs
                 double cost = modelState.getCurrentInventory() 
                     * properties.getFacilityProperties().getInventoryCost();
-                int day = (int) TimeUtils.simTimeToDuration(currentTime).toDaysPart() + 1;
+                int day = (int) TimeUtils.simTimeToDuration(modelState.getCurrentTime()).toDaysPart() + 1;
                 ImmutableInventoryCost immutableInventoryCost = ImmutableInventoryCost.builder()
                     .retailerId(0)
                     .cost(cost)
                     .day(day)
                     .build();
-                modelState.getSchedule().scheduleOutput(currentTime, Retailer.dailyInventoryCost, immutableInventoryCost);
+                modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Retailer.dailyInventoryCost, immutableInventoryCost);
 
                 // Schedule the next update
-                LongSimTime nextUpdateTime = currentTime.plus(TimeUtils.durationToSimTime(Duration.ofDays(1)));
+                LongSimTime nextUpdateTime = modelState.getCurrentTime().plus(TimeUtils.durationToSimTime(Duration.ofDays(1)));
                 modelState.getSchedule().scheduleInternalEvent(nextUpdateTime, new UpdateInventory());
             } else if (event instanceof PostDelveryRoute postDeliveryRoute) {
                 double productLoaded = postDeliveryRoute.immutableDeliveryRoute().getDeliveries().stream()
                     .mapToDouble(ImmutableDelivery::getProductAmount)
                     .sum();
                 modelState.setCurrentInventory(modelState.getCurrentInventory() - productLoaded);
-                modelState.getSchedule().scheduleOutput(currentTime, Manufacturer.postDeliveryRoute, 
+                modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Manufacturer.postDeliveryRoute,
                     postDeliveryRoute.immutableDeliveryRoute());
             } else {
                 throw new IllegalArgumentException("Event of type " + event.getClass().getCanonicalName() 
@@ -93,7 +94,8 @@ public class ManufacturerImpl extends Manufacturer {
             LongSimTime loadVehiclesTime = openTime.plus(TimeUtils.durationToSimTime(Duration.ofDays(day)));
             for (int vehicle: routesByVehicle.keySet()) {
                 ImmutableDeliveryRoute deliveryRoute = routesByVehicle.get(vehicle);
-                modelState.getSchedule().scheduleInternalEvent(loadVehiclesTime, new PostDelveryRoute(deliveryRoute));
+                modelState.getSchedule().scheduleInternalEvent(loadVehiclesTime,
+                    new PostDelveryRoute(deliveryRoute));
             }
         }
     }

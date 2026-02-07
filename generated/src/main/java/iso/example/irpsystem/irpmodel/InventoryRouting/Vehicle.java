@@ -17,12 +17,9 @@ public abstract class Vehicle
   extends ScheduledDevsModel<LongSimTime, VehicleState> {
 
 public static String modelIdentifier = "vehicle";
-    public static final ImmutablePort<ImmutableDeliveryRoute> acceptDeliveryRoute = 
-      new ImmutablePort<>("acceptDeliveryRoute", ImmutableDeliveryRoute.class);
-    public static final ImmutablePort<ImmutableDelivery> dropDelivery = 
-      new ImmutablePort<>("dropDelivery", ImmutableDelivery.class);
-    public static final ImmutablePort<ImmutableVehicleCost> dailyDeliveryCost = 
-      new ImmutablePort<>("dailyDeliveryCost", ImmutableVehicleCost.class);
+    public static final ImmutablePort<ImmutableDeliveryRoute> acceptDeliveryRoute = new ImmutablePort<>("acceptDeliveryRoute", ImmutableDeliveryRoute.class);
+    public static final ImmutablePort<ImmutableDelivery> dropDelivery = new ImmutablePort<>("dropDelivery", ImmutableDelivery.class);
+    public static final ImmutablePort<ImmutableVehicleCost> dailyDeliveryCost = new ImmutablePort<>("dailyDeliveryCost", ImmutableVehicleCost.class);
 
 
     protected ImmutableVehicleProperties properties;
@@ -64,8 +61,7 @@ public static String modelIdentifier = "vehicle";
      * @param immutableDeliveryRoute - the ImmutableDeliveryRoute value arriving at the port
      * @param elapsedTime - the time since the last state transition
      */
-    protected abstract void handleAcceptDeliveryRoute(ImmutableDeliveryRoute immutableDeliveryRoute, 
-      LongSimTime elapsedTime);
+    protected abstract void handleAcceptDeliveryRoute(ImmutableDeliveryRoute immutableDeliveryRoute, LongSimTime elapsedTime);
 
 
 }

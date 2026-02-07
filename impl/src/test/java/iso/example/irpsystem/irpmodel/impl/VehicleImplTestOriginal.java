@@ -114,9 +114,8 @@ class VehicleImplTestOriginal {
     }
 
     @Override
-    public void internalStateTransitionFunction() {
-      modelState.setCurrentTime(modelState.getCurrentTime().plus(timeAdvanceFunction()));
-      modelState.getSchedule().removeCurrentScheduledOutput(modelState.getCurrentTime());
+    public void handleScheduledEvents(List<Object> events) {
+      // No internal events to handle
     }
   }
 

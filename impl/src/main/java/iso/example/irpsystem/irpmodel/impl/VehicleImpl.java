@@ -3,6 +3,7 @@ package iso.example.irpsystem.irpmodel.impl;
 import devs.iso.PortValue;
 import devs.iso.time.LongSimTime;
 import devs.utils.Schedule;
+import devs.utils.Schedule.ScheduledEvent;
 import iso.example.irpsystem.irpdomain.Coordinate;
 import iso.example.irpsystem.irpdomain.Delivery;
 import iso.example.irpsystem.irpdomain.DeliveryRoute;
@@ -26,7 +27,9 @@ public class VehicleImpl extends Vehicle {
   public record DeliveryEvent(ImmutableDelivery delivery) {
   }
 
-  public record ReturnToManufacturerEvent() {}
+  public record ReturnToManufacturerEvent() {
+
+  }
 
   public VehicleImpl(
       ImmutableVehicleState initialState,
@@ -61,11 +64,8 @@ public class VehicleImpl extends Vehicle {
   }
 
   @Override
-  public void internalStateTransitionFunction() {
-    LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
-    modelState.setCurrentTime(currentTime);
-    modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
-    for (Object event: modelState.getSchedule().removeCurrentScheduledEvents(currentTime)) {
+  public void handleScheduledEvents(List<Object> events) {
+    for (Object event: events) {
       if (event instanceof DeliveryEvent deliveryEvent) {
         double distance = Distance.distanceBetween(modelState.getLocation().toImmutable(),
             deliveryEvent.delivery().getRetailerLocation());
@@ -78,13 +78,13 @@ public class VehicleImpl extends Vehicle {
         modelState.setDailyKmTraveled(modelState.getDailyKmTraveled() + distance);
         modelState.setLocation(new Coordinate(0.0, 0.0));
         double dailyCost = modelState.getDailyKmTraveled() * properties.getCostPerKm();
-        int day = (int)(TimeUtils.simTimeToDuration(currentTime).toDaysPart() + 1);
+        int day = (int)(TimeUtils.simTimeToDuration(modelState.getCurrentTime()).toDaysPart() + 1);
         ImmutableVehicleCost immutableVehicleCost = ImmutableVehicleCost.builder()
           .vehicleId(properties.getVehicleId())
           .day(day)
           .cost(dailyCost)
           .build();
-        modelState.getSchedule().scheduleOutput(currentTime, Vehicle.dailyDeliveryCost, immutableVehicleCost);
+        modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Vehicle.dailyDeliveryCost, immutableVehicleCost);
       } else {
         throw new IllegalStateException("Unexpected event type: " + event.getClass());
       }
@@ -103,7 +103,8 @@ public class VehicleImpl extends Vehicle {
             new ImmutableCoordinate(0.0, 0.0));
       // Current time plus delivery duration plus travel time to next delivery
       long arrival = currentTime.getT() + TimeUtils.MINUTES_PER_DELIVERY + (long)(distance / (properties.getSpeedKmHr() / 60.0));
-      modelState.getSchedule().scheduleInternalEvent(LongSimTime.create(arrival), new ReturnToManufacturerEvent());
+      modelState.getSchedule().scheduleInternalEvent(LongSimTime.create(arrival),
+          new ReturnToManufacturerEvent());
   }
 
   protected void scheduleNextDelivery() {

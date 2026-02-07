@@ -2,7 +2,6 @@
 
 package iso.example.irpsystem.irpmodel.InventoryRouting;
 
-import devs.msg.state.ScheduleState;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,6 +12,7 @@ import devs.experimentalframe.Generator;
 import devs.iso.PortValue;
 import devs.iso.time.LongSimTime;
 import devs.msg.mutability.ImmutablePort;
+import devs.msg.state.ScheduleState;
 import iso.example.irpsystem.irpmodel.DevsModelTest;
 import iso.example.irpsystem.irpdomain.*;
 
@@ -31,10 +31,8 @@ public abstract class AbstractManufacturerTest<A> extends DevsModelTest<LongSimT
         }
 
         @Override
-        public void internalStateTransitionFunction() {
-            LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
-            modelState.setCurrentTime(currentTime);
-            modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
+        public void handleScheduledEvents(List<Object> events) {
+
         }
     }  
     @Override

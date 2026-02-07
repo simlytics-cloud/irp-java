@@ -114,7 +114,7 @@ class VehicleImplTest extends AbstractVehicleTest<VehicleImplTest.VehicleAccepto
   @DisplayName("Test VehicleImpl")
   protected void testVehicleImpl() throws InterruptedException {
     executeExperimentalFrame(LongSimTime.create(0),
-        TimeUtils.durationToSimTime(Duration.ofDays(2)), "VehicleTest");
+        TimeUtils.durationToSimTime(Duration.ofDays(2)), "VehicleTest", 5);
   }
 
   @Override

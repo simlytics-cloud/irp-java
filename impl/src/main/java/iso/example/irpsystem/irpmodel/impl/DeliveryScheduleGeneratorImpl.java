@@ -1,5 +1,6 @@
 package iso.example.irpsystem.irpmodel.impl;
 
+import devs.utils.Schedule.ScheduledEvent;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -20,10 +21,7 @@ public class DeliveryScheduleGeneratorImpl extends DeliveryScheduleGenerator {
 
 
     @Override
-    public void internalStateTransitionFunction() {
-        LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
-        modelState.setCurrentTime(currentTime);
-        modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
+    public void handleScheduledEvents(List<Object> events) {
     }
 
     @Override

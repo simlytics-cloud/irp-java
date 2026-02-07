@@ -2,10 +2,10 @@
 
 package iso.example.irpsystem.irpmodel.InventoryRouting;
 
-import devs.msg.state.ScheduleState;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import devs.OutputCouplingHandler;
 import devs.experimentalframe.Acceptor;
@@ -13,6 +13,7 @@ import devs.experimentalframe.Generator;
 import devs.iso.PortValue;
 import devs.iso.time.LongSimTime;
 import devs.msg.mutability.ImmutablePort;
+import devs.msg.state.ScheduleState;
 import iso.example.irpsystem.irpmodel.DevsModelTest;
 import iso.example.irpsystem.irpdomain.*;
 
@@ -30,10 +31,8 @@ public abstract class AbstractVehicleTest<A> extends DevsModelTest<LongSimTime> 
         }
 
         @Override
-        public void internalStateTransitionFunction() {
-            LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
-            modelState.setCurrentTime(currentTime);
-            modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
+        public void handleScheduledEvents(List<Object> events) {
+
         }
     }  
     @Override
@@ -51,8 +50,11 @@ public abstract class AbstractVehicleTest<A> extends DevsModelTest<LongSimTime> 
     public static final ImmutablePort<ImmutableVehicleCost> fromDailyDeliveryCost = new ImmutablePort<>("fromDailyDeliveryCost", ImmutableVehicleCost.class);
          
 
-        public TestAcceptor() {
-            super(buildAcceptorState(), modelIdentifier);
+        private final AtomicReference<Throwable> failureRef;
+        
+        public TestAcceptor(AtomicReference<Throwable> failureRef) {
+          super(buildAcceptorState(), modelIdentifier);
+          this.failureRef = failureRef;
         }
 
         @Override
@@ -62,8 +64,15 @@ public abstract class AbstractVehicleTest<A> extends DevsModelTest<LongSimTime> 
 
         @Override
         public void externalStateTransitionFunction(LongSimTime elapsedTime, List<PortValue<?>> inputs) {
+          try {
             handleAcceptorInput(elapsedTime, modelState, inputs);
-            
+          } catch (Throwable t) {
+            // Record first failure so the test thread can fail deterministically.
+            failureRef.compareAndSet(null, t);
+
+            // Rethrow so this actor stops; coupled model sees Terminated and stops (your default).
+            throw t;
+          }
         }
 
         @Override
@@ -73,8 +82,8 @@ public abstract class AbstractVehicleTest<A> extends DevsModelTest<LongSimTime> 
 
     }    
     @Override
-    protected Acceptor<LongSimTime, ?> buldAcceptor() {
-        return new TestAcceptor();
+    protected Acceptor<LongSimTime, ?> buldAcceptor(AtomicReference<Throwable> failureRef) {
+        return new TestAcceptor(failureRef);
     }
 
     protected abstract A buildAcceptorState();

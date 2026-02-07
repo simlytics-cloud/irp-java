@@ -1,5 +1,6 @@
 package iso.example.irpsystem.irpmodel.impl;
 
+import devs.utils.Schedule.ScheduledEvent;
 import java.time.Duration;
 import java.util.List;
 
@@ -14,7 +15,8 @@ import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
 public class RetailerImpl extends Retailer {
 
-    static record UpdateInventoryEvent() {}
+    static record UpdateInventoryEvent() {
+    }
 
     public RetailerImpl(ImmutableRetailerState initialState, String modelIdentifier,
             ImmutableRetailerProperties properties) {
@@ -29,11 +31,8 @@ public class RetailerImpl extends Retailer {
     }
 
     @Override
-    public void internalStateTransitionFunction() {
-        LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
-        modelState.setCurrentTime(currentTime);
-        modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
-        for (Object event: modelState.getSchedule().removeCurrentScheduledEvents(currentTime)) {
+    public void handleScheduledEvents(List<Object> events) {
+        for (Object event: events) {
             if (event instanceof UpdateInventoryEvent) {
                 // Verify inventory is under max amount
                 if (modelState.getCurrentInventory() > properties.getMaxInventory()) {
@@ -55,17 +54,19 @@ public class RetailerImpl extends Retailer {
                 // Report inventory costs
                 double cost = modelState.getCurrentInventory() 
                     * properties.getFacilityProperties().getInventoryCost();
-                int day = (int) TimeUtils.simTimeToDuration(currentTime).toDaysPart() + 1;
+                int day = (int) TimeUtils.simTimeToDuration(modelState.getCurrentTime()).toDaysPart() + 1;
                 ImmutableInventoryCost immutableInventoryCost = ImmutableInventoryCost.builder()
                     .retailerId(properties.getRetailerId())
                     .cost(cost)
                     .day(day)
                     .build();
-                modelState.getSchedule().scheduleOutput(currentTime, Retailer.dailyInventoryCost, immutableInventoryCost);
+                modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Retailer.dailyInventoryCost, immutableInventoryCost);
 
                 // Schedule the next update
-                LongSimTime nextUpdateTime = currentTime.plus(TimeUtils.durationToSimTime(Duration.ofDays(1)));
-                modelState.getSchedule().scheduleInternalEvent(nextUpdateTime, new UpdateInventoryEvent());
+                LongSimTime nextUpdateTime = modelState.getCurrentTime()
+                    .plus(TimeUtils.durationToSimTime(Duration.ofDays(1)));
+                modelState.getSchedule().scheduleInternalEvent(nextUpdateTime,
+                    new UpdateInventoryEvent());
             } else {
                 throw new IllegalArgumentException("Event of type " + event.getClass().getCanonicalName() 
                     + " is not expected by RetailerImpl");

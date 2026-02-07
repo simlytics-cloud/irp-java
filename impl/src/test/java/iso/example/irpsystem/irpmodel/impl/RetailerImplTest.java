@@ -164,7 +164,7 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
   @DisplayName("Test RetailerImpl")
   protected void testRetailerImpl() throws InterruptedException {
     executeExperimentalFrame(LongSimTime.create(0),
-        TimeUtils.durationToSimTime(Duration.ofDays(2)), "RetailerTest");
+        TimeUtils.durationToSimTime(Duration.ofDays(2)), "RetailerTest", 5);
   }
 
 }

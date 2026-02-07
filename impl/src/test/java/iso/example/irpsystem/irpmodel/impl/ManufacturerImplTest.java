@@ -127,7 +127,7 @@ public class ManufacturerImplTest extends AbstractManufacturerTest<ManufacturerI
   @DisplayName("Test ManufacturerImpl")
   protected void testManufacturerImpl() throws InterruptedException {
     executeExperimentalFrame(LongSimTime.create(0),
-        TimeUtils.durationToSimTime(Duration.ofDays(2)), "ManufacturerTest");
+        TimeUtils.durationToSimTime(Duration.ofDays(2)), "ManufacturerTest", 5);
   }
 
 }

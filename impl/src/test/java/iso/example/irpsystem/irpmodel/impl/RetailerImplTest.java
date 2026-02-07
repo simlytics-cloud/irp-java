@@ -1,8 +1,10 @@
 package iso.example.irpsystem.irpmodel.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import devs.experimentalframe.Acceptor;
 import devs.msg.state.ScheduleState;
 import devs.msg.state.TimeState;
 
@@ -11,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -99,6 +102,7 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
         }
 
         protected boolean completedDay1 = false;
+        protected boolean completedDay2 = false;
         
     }
 
@@ -125,6 +129,7 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
                     if (!acceptorState.completedDay1) {
                         fail("Did not complete Day 1 cost accounting");
                     }
+                    acceptorState.completedDay2 = true;
                     System.out.println("Retailer test completed successfully");
                 }
             } else {
@@ -158,6 +163,35 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
         return retailerImpl.getDevsSimulatorProvider();
     }
 
+    @Override
+    protected Acceptor<LongSimTime, ?> buldAcceptor(AtomicReference<Throwable> failureRef) {
+        return new TestAcceptor(failureRef) {
+            @Override
+            public void internalStateTransitionFunction() {
+                try {
+                    assertTrue(modelState.completedDay1 && modelState.completedDay2,
+                        "Retailer did not send all inventory reports"
+                    );
+                } catch (Throwable t) {
+                    // Record it so the test thread can fail after termination
+                    failureRef.compareAndSet(null, t);
+                    // Swallow so simulation continues and can terminate normally
+                }
+            }
+
+            @Override
+            public LongSimTime timeAdvanceFunction() {
+                // NOTE: you likely meant completedDay1 && completedDay2 (your snippet had completedDay2 twice)
+                if (modelState.completedDay1 && modelState.completedDay2) {
+                    return LongSimTime.buildMaxValue();
+                } else {
+                    return TimeUtils.durationToSimTime(Duration.ofDays(2)
+                            .minusMinutes(1))
+                        .minus(modelState.getCurrentTime());
+                }
+            }
+        };
+    }
 
 
   @Test

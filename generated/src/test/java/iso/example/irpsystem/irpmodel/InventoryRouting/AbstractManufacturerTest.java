@@ -70,9 +70,6 @@ public abstract class AbstractManufacturerTest<A> extends DevsModelTest<LongSimT
           } catch (Throwable t) {
             // Record first failure so the test thread can fail deterministically.
             failureRef.compareAndSet(null, t);
-
-            // Rethrow so this actor stops; coupled model sees Terminated and stops (your default).
-            throw t;
           }
         }
 

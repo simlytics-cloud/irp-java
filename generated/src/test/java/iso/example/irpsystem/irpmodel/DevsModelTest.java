@@ -69,14 +69,20 @@ public abstract class DevsModelTest<T extends SimTime> {
           .build());
 
       TestProbe<DevsMessage> testProbe = testKit.createTestProbe();
-      testProbe.expectTerminated(rootCoordinator, Duration.ofSeconds(timeoutSeconds));
+      try {
+        testProbe.expectTerminated(rootCoordinator, Duration.ofSeconds(timeoutSeconds));
+      } catch (AssertionError timeoutOrOther) {
+        Throwable failure = failureRef.get();
+        if (failure != null) {
+          if (failure instanceof AssertionError ae) throw ae;
+          throw new AssertionError("Failure occurred inside actor thread", failure);
+        }
+        throw timeoutOrOther;
+      }
 
-      // Fail the JUnit test on the test thread if the acceptor recorded any failure.
       Throwable failure = failureRef.get();
       if (failure != null) {
-        if (failure instanceof AssertionError ae) {
-          throw ae;
-        }
+        if (failure instanceof AssertionError ae) throw ae;
         throw new AssertionError("Failure occurred inside actor thread", failure);
       }
     } finally {

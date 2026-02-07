@@ -21,12 +21,12 @@ git fetch --all --prune
 git checkout "${DEVSTREAM_BRANCH}"
 git pull --ff-only || true
 
-echo "=== Build/install devs-streaming into local Maven repo ==="
+echo "=== Install devs-streaming to local Maven repo (~/.m2) ==="
 mvn -DskipTests install
 popd >/dev/null
 
-echo "=== Build tutorial repo (irp-java) ==="
-# Codespaces opens with the repo as the working directory
+echo "=== Build irp-java ==="
+# Codespaces opens in /workspaces/irp-java
 mvn -DskipTests verify
 
 echo "=== Done ==="

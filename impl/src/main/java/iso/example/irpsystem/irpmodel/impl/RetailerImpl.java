@@ -1,7 +1,5 @@
 package iso.example.irpsystem.irpmodel.impl;
 
-import devs.utils.Schedule.ScheduledEvent;
-import java.time.Duration;
 import java.util.List;
 
 import devs.iso.PortValue;

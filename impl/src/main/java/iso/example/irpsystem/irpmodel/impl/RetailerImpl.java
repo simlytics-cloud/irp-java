@@ -23,6 +23,13 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
  * provide implementations of the time advance and output functions.  Time advance 
  * returns the interval between the current time and the first item on the schedule.
  * The output function returns a bag of all PortValues on the schedule for the current time.
+ * It also implemenents an internal state transition function that updates the
+ * current time, removes the published outpts from the schedule, and retrieves a 
+ * list of event Objects that are the currently scheduled events, passing them
+ * to an abstract event handler.  So instead of implementing an internal state 
+ * transition function, the model developer implements
+ *   public void handleScheduledEvents(List<Object> events);
+ * 
  * The schedule allows a developer to create inner classes for their internal events
  * then add them to the schedule them as follows, as in the constructor to schedule
  * the first day's opening.
@@ -32,18 +39,6 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
  * on the dailyInventoryCost port.
  *     modelState.getSchedule().scheduleOutput(currentTime, Retailer.dailyInventoryCost, 
  *       immutableInventoryCost);
- * For a ScheduledDevsModel, it is important to update the current time at 
- * each state transition.  For an external transition, just add the elapsed
- * time to the current time.  For the internal state transition, call the
- * time advance function to get the elapsed time, then add it to the
- * current time.  Another requirement in the internal state transition is
- * to remove the currently scheduled output from the schedule.  Since the output
- * function is called immmendiately prior to the internal state transition, the output
- * has already been sent.  Removing it from the schedule ensure proper operation of the
- * schedule and prevents repeatedly generating the scheduled output.Failure to properly 
- * handle time or scheduled outputs will lead to some difficult to find errors in behavior.
- * The first few lines of the internal state transition are provided for you to
- * ensure this handling is done properly.
  * 
  * The Facility class is a simple placeholder parent that shares common state value
  * and properties between the Retailer and the Manufacturer, which both extend
@@ -90,11 +85,8 @@ public class RetailerImpl extends Retailer {
      * Implement the correct behavior here for the internal state transition.  
      */
     @Override
-    public void internalStateTransitionFunction() {
-        LongSimTime currentTime = modelState.getCurrentTime().plus(timeAdvanceFunction());
-        modelState.setCurrentTime(currentTime);
-        modelState.getSchedule().removeCurrentScheduledOutput(currentTime);
-        for (Object event: modelState.getSchedule().removeCurrentScheduledEvents(currentTime)) {
+    public void handleScheduledEvents(List<Object> events) {
+        for (Object event: events) {
             if (event instanceof CloseEvent) {
                 // Reduce inventor by the daily consumption
                 modelState.setCurrentInventory(modelState.getCurrentInventory() 
@@ -125,10 +117,10 @@ public class RetailerImpl extends Retailer {
                 modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Retailer.dailyInventoryCost, immutableInventoryCost);
 
                 // Schedule the opening
-                LongSimTime nextUpdateTime = LongSimTime.create(currentTime.getT() + (60 * 14));  // Open at 6 AM
+                LongSimTime nextUpdateTime = LongSimTime.create(modelState.getCurrentTime().getT() + (60 * 14));  // Open at 6 AM
                 modelState.getSchedule().scheduleInternalEvent(nextUpdateTime, new OpenEvent());
             } else if (event instanceof OpenEvent) {
-                LongSimTime nextUpdateTime = LongSimTime.create(currentTime.getT() + (60 * 10));  // Close at 4pm
+                LongSimTime nextUpdateTime = LongSimTime.create(modelState.getCurrentTime().getT() + (60 * 10));  // Close at 4pm
                 modelState.getSchedule().scheduleInternalEvent(nextUpdateTime, new CloseEvent());                
             } else {
                 throw new IllegalArgumentException("Event of type " + event.getClass().getCanonicalName() 

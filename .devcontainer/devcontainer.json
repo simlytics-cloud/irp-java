@@ -1,0 +1,22 @@
+{
+  "name": "IRP Tutorial (Java 21 + Maven 3.9)",
+  "image": "mcr.microsoft.com/devcontainers/java:21",
+  "features": {
+    "ghcr.io/devcontainers/features/maven:1": {
+      "version": "3.9.9"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-maven"
+      ],
+      "settings": {
+        "maven.terminal.useJavaHome": true
+      }
+    }
+  }
+}
+

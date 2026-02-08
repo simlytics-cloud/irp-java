@@ -18,7 +18,7 @@ This tutorial runs on [GitHub Codespaces](https://github.com/features/codespaces
 
 ---
 
-# 🚀 Quick Start (Recommended: Codespaces)
+## Quick Start (Recommended: Codespaces)
 
 1. Click **Code → Open in Codespaces**
 2. Wait for the environment to build.  It takes a little while to download all Maven dependencies and compile DEVS Streaming Frarmework.
@@ -43,7 +43,7 @@ You should see:
 
 ---
 
-# 💻 Quick Start (Local Machine)
+## Quick Start (Local Machine)
 
 ```
 git clone https://github.com/simlytics-cloud/devs-streaming.git
@@ -67,7 +67,7 @@ mvn install
 
 ## Retailer Model Tutorial — Scheduled DEVS Implementation Guide
 
-This tutorial page explains how the **Retailer** model is implemented for the Inventory Routing Problem using the [DEVS Streaming Framework](https://github.com/simlytics-cloud/devs-streaming) model pattern. It provides the architectural background needed to complete the `RetailerImpl` exercise class.
+This tutorial page explains how the **Retailer** model is implemented for the Inventory Routing Problem using the DEVS Streaming Framework model pattern. It provides the architectural background needed to complete the `RetailerImpl` exercise class.
 
 The Retailer model is built using the DEVS Streaming Framework’s [ScheduledDevsModel](https://github.com/simlytics-cloud/devs-streaming/blob/main/src/main/java/devs/ScheduledDevsModel.java). Much of the simulation timing and event mechanics are already implemented in the framework. Your job is to implement the domain behavior, not the simulation engine mechanics.
 
@@ -144,7 +144,7 @@ This is where your model reacts to scheduled internal events.
 
 ### Working with the Schedule
 
-The schedule supports both internal eventand scheduled outputs.
+The schedule supports both internal events and scheduled outputs.
 A common pattern is to define **inner classes** to represent internal events.
 
 
@@ -172,7 +172,7 @@ Example — publish daily inventory cost on the Retailers dailyInventoryCost por
 modelState.getSchedule().scheduleOutput(
     currentTime, // Time of the scheduled output
     Retailer.dailyInventoryCost, // Port on which to place the output
-    immutableInventoryCost // The output data structure consitent with the port tyep
+    immutableInventoryCost // The output data structure consitent with the port type
 );
 ```
 

@@ -6,7 +6,8 @@ import devs.proxy.KafkaDevsStreamProxy;
 import devs.proxy.KafkaReceiver;
 import iso.example.irpsystem.irpmodel.InventoryRouting.InventoryRouting;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
-import iso.example.irpsystem.irpmodel.impl.InventoryRoutingFactory;
+import iso.example.irpsystem.irpmodel.impl.BasicExperimentalFrameFactory;
+import iso.example.irpsystem.irpmodel.impl.BasicInventoryRoutingFactory;
 import iso.example.irpsystem.irpmodel.impl.IrpData;
 import iso.example.irpsystem.irpmodel.impl.RemoteModel;
 import java.util.HashMap;
@@ -69,7 +70,8 @@ public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
             runRemoteModelsLocally(irpData, kafkaClusterConfig, kafkaConsumerConfig);
         }
         ActorRef<DevsMessage> experimentalFrame = context.spawn(experimentalFrameFactory.create(startTime), "inventoryRoutingApp");
-        rootCoordinator = context.spawn(RootCoordinator.create(endTime, experimentalFrame, ExperimentalFrame.modelIdentifier), "root");
+        rootCoordinator = context.spawn(RootCoordinator.create(endTime, experimentalFrame,
+            BasicExperimentalFrameFactory.basicExperimentalFrameIdentifier), "root");
         context.watch(rootCoordinator);
         rootCoordinator.tell(SimulationInit.builder()
             .eventTime(startTime)
@@ -113,7 +115,7 @@ public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
                     if (!coordinatorProxies.containsKey(remoteModel.topic())) {
                         ActorRef<DevsMessage> coordinatorProxy =
                             getContext().spawn(
-                                KafkaDevsStreamProxy.create(InventoryRouting.modelIdentifier,
+                                KafkaDevsStreamProxy.create(BasicInventoryRoutingFactory.basicInventoryRoutingIdentifier,
                                     "irp-system",
                                     kafkaClusterConfig), "inventoryRoutingCoordinatorProxy");
                         coordinatorProxies.put(remoteModel.topic(), coordinatorProxy);
@@ -122,7 +124,7 @@ public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
                     // Create the retailer
                     char retailerId = modelId.charAt(modelId.length() - 1);
                     int retailerIndex = Integer.parseInt(String.valueOf(retailerId)) - 1;
-                    Retailer retailer = InventoryRoutingFactory.buildRetailer(irpData.retailers()
+                    Retailer retailer = BasicInventoryRoutingFactory.buildRetailer(irpData.retailers()
                         .get(retailerIndex));
 
                     ActorRef<DevsMessage> retailerSimulator = getContext().spawn(

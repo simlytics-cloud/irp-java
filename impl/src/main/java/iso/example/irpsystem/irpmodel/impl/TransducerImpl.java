@@ -1,6 +1,7 @@
 package iso.example.irpsystem.irpmodel.impl;
 
 import devs.utils.Schedule.ScheduledEvent;
+import iso.example.irpsystem.irpmodel.ExperimentalFrame.TransducerState;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -15,13 +16,13 @@ import iso.example.irpsystem.irpmodel.ExperimentalFrame.ImmutableTransducerState
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.Transducer;
 import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
-public class TransducerImpl extends Transducer {
+public class TransducerImpl extends Transducer<ImmutableTransducerProperties, TransducerState, ImmutableTransducerState> {
 
     protected static record ComputeFinalCosts(){
     };
 
-    public TransducerImpl(ImmutableTransducerState initialState, int lastDay) {
-        super(initialState, Transducer.modelIdentifier, new ImmutableTransducerProperties());
+    public TransducerImpl(ImmutableTransducerState initialState, String modelIdentifier, int lastDay) {
+        super(initialState, modelIdentifier, ImmutableTransducerProperties.builder().build());
         modelState.getSchedule().scheduleInternalEvent(TimeUtils.durationToSimTime(Duration.ofDays(lastDay)),
             new ComputeFinalCosts());
     }

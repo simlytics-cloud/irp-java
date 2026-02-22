@@ -1,6 +1,7 @@
 package iso.example.irpsystem.irpmodel.impl;
 
 import devs.utils.Schedule.ScheduledEvent;
+import iso.example.irpsystem.irpmodel.InventoryRouting.ManufacturerState;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +19,7 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.Manufacturer;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
 import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
-public class ManufacturerImpl extends Manufacturer {
+public class ManufacturerImpl extends Manufacturer<ImmutableManufacturerProperties, ManufacturerState, ImmutableManufacturerState> {
 
     protected record UpdateInventory() {
     }
@@ -26,8 +27,8 @@ public class ManufacturerImpl extends Manufacturer {
     };
 
     public ManufacturerImpl(ImmutableManufacturerState initialState,
-            ImmutableManufacturerProperties properties) {
-        super(initialState, Manufacturer.modelIdentifier, properties);
+            String modelIdentifier, ImmutableManufacturerProperties properties) {
+        super(initialState, modelIdentifier, properties);
         modelState.setCurrentInventory(properties.getFacilityProperties().getStartingInventory());
         modelState.getSchedule().scheduleInternalEvent(TimeUtils.durationToSimTime(
             TimeUtils.MANUFACTURER_REPORT_DURATION), new UpdateInventory());

@@ -159,7 +159,7 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
             .minInventory(retailerData.minInventory())
             .maxInventory(retailerData.maxInventory())
             .build();
-        RetailerImpl retailerImpl = new RetailerImpl(retailerState, Retailer.modelIdentifier, properties);
+        RetailerImpl retailerImpl = new RetailerImpl(retailerState, modelIdentifier, properties);
         return retailerImpl.getDevsSimulatorProvider();
     }
 

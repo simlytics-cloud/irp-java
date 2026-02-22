@@ -114,7 +114,7 @@ class VehicleImplTest extends AbstractVehicleTest<VehicleImplTest.VehicleAccepto
   @DisplayName("Test VehicleImpl")
   protected void testVehicleImpl() throws InterruptedException {
     executeExperimentalFrame(LongSimTime.create(0),
-        TimeUtils.durationToSimTime(Duration.ofDays(2)), "VehicleTest", 5);
+        TimeUtils.durationToSimTime(Duration.ofDays(2)), "VehicleTest", 60);
   }
 
   @Override
@@ -126,11 +126,11 @@ class VehicleImplTest extends AbstractVehicleTest<VehicleImplTest.VehicleAccepto
 
     // Schedule day 1 route at 6AM
     LongSimTime day1RouteTime = TimeUtils.durationToSimTime(TimeUtils.OPENING_DURATION);
-    scheduleState.getSchedule().scheduleOutput(day1RouteTime, TestGenerator.toAcceptDeliveryRoute, dayOneRoute);
+    scheduleState.getSchedule().scheduleOutput(day1RouteTime, AbstractVehicleTest.TestGenerator.toAcceptDeliveryRoute, dayOneRoute);
 
     // Schedule day 2 route 24 hours later
     LongSimTime day2RouteTime = day1RouteTime.plus(TimeUtils.durationToSimTime(Duration.ofDays(1)));
-    scheduleState.getSchedule().scheduleOutput(day2RouteTime, TestGenerator.toAcceptDeliveryRoute, dayTwoRoute);
+    scheduleState.getSchedule().scheduleOutput(day2RouteTime, AbstractVehicleTest.TestGenerator.toAcceptDeliveryRoute, dayTwoRoute);
     return scheduleState;
   }
 
@@ -184,7 +184,7 @@ class VehicleImplTest extends AbstractVehicleTest<VehicleImplTest.VehicleAccepto
         .schedule(new Schedule<>())
         .build();
 
-    VehicleImpl vehicleImpl = new VehicleImpl(vehicleState.toImmutable(), Vehicle.modelIdentifier, vehicleProperties);
+    VehicleImpl vehicleImpl = new VehicleImpl(vehicleState.toImmutable(), "vehicle", vehicleProperties);
     return vehicleImpl.getDevsSimulatorProvider();
   }
 

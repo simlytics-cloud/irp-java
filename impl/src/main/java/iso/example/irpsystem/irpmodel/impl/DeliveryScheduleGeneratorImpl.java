@@ -1,6 +1,8 @@
 package iso.example.irpsystem.irpmodel.impl;
 
 import devs.utils.Schedule.ScheduledEvent;
+import iso.example.irpsystem.irpmodel.ExperimentalFrame.DeliveryScheduleGeneratorProperties;
+import iso.example.irpsystem.irpmodel.ExperimentalFrame.DeliveryScheduleGeneratorState;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -11,10 +13,11 @@ import iso.example.irpsystem.irpmodel.ExperimentalFrame.DeliveryScheduleGenerato
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.ImmutableDeliveryScheduleGeneratorProperties;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.ImmutableDeliveryScheduleGeneratorState;
 
-public class DeliveryScheduleGeneratorImpl extends DeliveryScheduleGenerator {
+public class DeliveryScheduleGeneratorImpl extends DeliveryScheduleGenerator
+    <ImmutableDeliveryScheduleGeneratorProperties, DeliveryScheduleGeneratorState, ImmutableDeliveryScheduleGeneratorState> {
 
-    public DeliveryScheduleGeneratorImpl(ImmutableDeliveryScheduleGeneratorState initialState) {
-        super(initialState, DeliveryScheduleGenerator.modelIdentifier, new ImmutableDeliveryScheduleGeneratorProperties());
+    public DeliveryScheduleGeneratorImpl(ImmutableDeliveryScheduleGeneratorState initialState, String modelIdentifier) {
+        super(initialState, modelIdentifier, ImmutableDeliveryScheduleGeneratorProperties.builder().build());
         modelState.getSchedule().scheduleOutput(LongSimTime.create(0), 
             DeliveryScheduleGenerator.postDeliverySchedule, initialState.getDeliverySchedule());
     }

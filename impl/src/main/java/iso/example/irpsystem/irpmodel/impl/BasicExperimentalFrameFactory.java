@@ -1,14 +1,14 @@
 package iso.example.irpsystem.irpmodel.impl;
 
 import com.typesafe.config.Config;
+import iso.example.irpsystem.irpmodel.BasicExperimentalFrame.AbstractBasicExperimentalFrameFactory;
+import iso.example.irpsystem.irpmodel.BasicInventoryRouting.AbstractBasicInventoryRoutingFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 import devs.CoupledModelFactory;
-import devs.PDEVSModel;
 import devs.PDevsCouplings;
 import devs.SimulatorProvider;
 import devs.iso.time.LongSimTime;
@@ -18,32 +18,24 @@ import iso.example.irpsystem.irpdomain.Delivery;
 import iso.example.irpsystem.irpdomain.DeliveryRoute;
 import iso.example.irpsystem.irpdomain.DeliverySchedule;
 import iso.example.irpsystem.irpdomain.ImmutableDeliverySchedule;
-import iso.example.irpsystem.irpmodel.ExperimentalFrame.AbstractExperimentalFrameFactory;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.DeliveryScheduleGenerator;
-import iso.example.irpsystem.irpmodel.ExperimentalFrame.DeliveryScheduleGeneratorProperties;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.DeliveryScheduleGeneratorState;
-import iso.example.irpsystem.irpmodel.ExperimentalFrame.ExperimentalFrame;
-import iso.example.irpsystem.irpmodel.ExperimentalFrame.ExperimentalFrameInputCouplingHandler;
-import iso.example.irpsystem.irpmodel.ExperimentalFrame.ExperimentalFrameOutputCouplingHandler;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.Transducer;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.TransducerState;
-import iso.example.irpsystem.irpmodel.InventoryRouting.AbstractInventoryRoutingFactory;
-import iso.example.irpsystem.irpmodel.InventoryRouting.InventoryRouting;
-import iso.example.irpsystem.irpmodel.InventoryRouting.InventoryRoutingInputCouplingHandler;
 import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 
-public class ExperimentalFrameFactory extends AbstractExperimentalFrameFactory {
+public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFrameFactory {
 
     protected final IrpData irpData;
     private final Map<String, RemoteModel> remoteModels = new HashMap<>();
     Config kafkaConsumerConfig;
     Config kafkaProducerConfig;
 
-    public ExperimentalFrameFactory(IrpData irpData) {
+    public BasicExperimentalFrameFactory(IrpData irpData) {
         this.irpData = irpData;
     }
 
-    public ExperimentalFrameFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
+    public BasicExperimentalFrameFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
         Config kafkaConsumerConfig,
         Config kafkaProducerConfig) {
         this.irpData = irpData;
@@ -96,7 +88,8 @@ public class ExperimentalFrameFactory extends AbstractExperimentalFrameFactory {
             .deliverySchedule(deliverySchedule.toMutable())
             .schedule(schedule)
             .build();
-        DeliveryScheduleGenerator deliveryScheduleGenerator = new  DeliveryScheduleGeneratorImpl(initialState.toImmutable());
+        DeliveryScheduleGenerator deliveryScheduleGenerator = new  DeliveryScheduleGeneratorImpl(initialState.toImmutable(),
+            generatorIdentifier);
         return List.of(deliveryScheduleGenerator);
     }
 
@@ -106,31 +99,40 @@ public class ExperimentalFrameFactory extends AbstractExperimentalFrameFactory {
             .currentTime(LongSimTime.create(0))
             .schedule(new Schedule<>())
             .build();
-        Transducer transducer = new TransducerImpl(transducerState.toImmutable(), irpData.numTimePeriods());
+        Transducer transducer = new TransducerImpl(transducerState.toImmutable(), transducerIdentifier, irpData.numTimePeriods());
         return List.of(transducer);
     }
 
     @Override
-    protected AbstractInventoryRoutingFactory buildInventoryRoutingFactory() {
-        InventoryRoutingFactory inventoryRoutingFactory;
+    protected AbstractBasicInventoryRoutingFactory buildBasicInventoryRoutingFactory() {
+        BasicInventoryRoutingFactory inventoryRoutingFactory;
         if (kafkaConsumerConfig != null && kafkaProducerConfig != null) {
-            inventoryRoutingFactory = new InventoryRoutingFactory(irpData, remoteModels,
+            inventoryRoutingFactory = new BasicInventoryRoutingFactory(irpData, remoteModels,
                 kafkaConsumerConfig, kafkaProducerConfig);
         } else  {
-            inventoryRoutingFactory = new InventoryRoutingFactory(irpData);
+            inventoryRoutingFactory = new BasicInventoryRoutingFactory(irpData);
         }
         return inventoryRoutingFactory;
     }
 
     public CoupledModelFactory<LongSimTime> buiCoupledModelFactory() {
         List<SimulatorProvider<LongSimTime>> simulationProviders = new ArrayList<>();
-        simulationProviders.addAll(buildDeliveryScheduleGenerators().stream().map(PDEVSModel::getDevsSimulatorProvider).toList());
-        simulationProviders.addAll(buildTransducers().stream().map(PDEVSModel::getDevsSimulatorProvider).toList());
-        InventoryRoutingFactory inventoryRoutingFactory = (InventoryRoutingFactory) buildInventoryRoutingFactory();
+        List<DeliveryScheduleGenerator> deliveryScheduleGenerators = buildDeliveryScheduleGenerators();
+        for (DeliveryScheduleGenerator deliveryScheduleGenerator : deliveryScheduleGenerators) {
+            SimulatorProvider<LongSimTime> simulatorProvider = deliveryScheduleGenerator.getDevsSimulatorProvider();
+            simulationProviders.add(simulatorProvider);
+        }
+        List<Transducer> transducers = buildTransducers();
+        for (Transducer transducer : transducers) {
+            SimulatorProvider<LongSimTime> simulatorProvider = transducer.getDevsSimulatorProvider();
+            simulationProviders.add(simulatorProvider);
+        }
+        //simulationProviders.addAll(buildDeliveryScheduleGenerators().stream().map(PDEVSModel::getDevsSimulatorProvider).toList());
+        //simulationProviders.addAll(buildTransducers().stream().map(PDEVSModel::getDevsSimulatorProvider).toList());
+        BasicInventoryRoutingFactory inventoryRoutingFactory = (BasicInventoryRoutingFactory) buildBasicInventoryRoutingFactory();
         simulationProviders.add(inventoryRoutingFactory.buildCoupledModelFactory());
-        PDevsCouplings couplings = new PDevsCouplings(List.of(new ExperimentalFrameInputCouplingHandler()), 
-            List.of(new ExperimentalFrameOutputCouplingHandler()));
-        return new CoupledModelFactory<>(ExperimentalFrame.modelIdentifier, simulationProviders,
+        PDevsCouplings couplings = buildCouplings();
+        return new CoupledModelFactory<>(basicExperimentalFrameIdentifier, simulationProviders,
             couplings);
     }
 

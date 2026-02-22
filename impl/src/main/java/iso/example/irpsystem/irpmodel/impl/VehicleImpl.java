@@ -15,6 +15,7 @@ import iso.example.irpsystem.irpdomain.VehicleCost;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableVehicleProperties;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableVehicleState;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Vehicle;
+import iso.example.irpsystem.irpmodel.InventoryRouting.VehicleState;
 import iso.example.irpsystem.irpmodel.algorithms.Distance;
 import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
@@ -23,7 +24,7 @@ import java.util.List;
 import devs.PDevsCoordinator;
 import devs.PDevsSimulator;
 
-public class VehicleImpl extends Vehicle {
+public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleState, ImmutableVehicleState> {
   public record DeliveryEvent(ImmutableDelivery delivery) {
   }
 

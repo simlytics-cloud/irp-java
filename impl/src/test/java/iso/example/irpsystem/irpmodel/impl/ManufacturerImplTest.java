@@ -38,18 +38,18 @@ public class ManufacturerImplTest extends AbstractManufacturerTest<ManufacturerI
 
     static IrpData irpData = IrpData.read(IrpReaderTest.path);
     @Override
-    protected ScheduleState buildGeneratorState() {
+    protected ScheduleState<LongSimTime> buildGeneratorState() {
         ImmutableDeliverySchedule immutableDeliverySchedule = VehicleImplTest.buildDeliverySchedule();
         Schedule<LongSimTime> schedule = new Schedule<>();
         // Post the delivery schedule at time 0
-        schedule.scheduleOutput(LongSimTime.create(0), TestGenerator.toAcceptDeliverySchedule, immutableDeliverySchedule);
+        schedule.scheduleOutput(LongSimTime.create(0), AbstractManufacturerTest.TestGenerator.toAcceptDeliverySchedule, immutableDeliverySchedule);
         // Return stock to manufacturer at 5pm on first day
         ImmutableDelivery delivery = ImmutableDelivery.builder()
             .retailerId(0)
             .retailerLocation(new ImmutableCoordinate(0.0, 0.0))
             .productAmount(100.0)
             .build();
-        schedule.scheduleOutput(TimeUtils.durationToSimTime(Duration.ofHours(17)), TestGenerator.toAcceptDelivery, delivery);
+        schedule.scheduleOutput(TimeUtils.durationToSimTime(Duration.ofHours(17)), AbstractManufacturerTest.TestGenerator.toAcceptDelivery, delivery);
         return new ScheduleState<>(LongSimTime.create(0), schedule);
     }
 
@@ -86,7 +86,7 @@ public class ManufacturerImplTest extends AbstractManufacturerTest<ManufacturerI
             .currentTime(LongSimTime.create(0))
             .schedule(new ImmutableSchedule<>(new TreeMap<>()))
             .build();
-        ManufacturerImpl manufacturerImpl = new ManufacturerImpl(initialState, properties);
+        ManufacturerImpl manufacturerImpl = new ManufacturerImpl(initialState, "manufacturer", properties);
         return manufacturerImpl.getDevsSimulatorProvider();
     }
 
@@ -97,12 +97,12 @@ public class ManufacturerImplTest extends AbstractManufacturerTest<ManufacturerI
         acceptorState.setCurrentTime(currentTime);                
         int day = (int) TimeUtils.simTimeToDuration(acceptorState.getCurrentTime()).toDaysPart() + 1;
         for (PortValue<?> portValue: portValues) {
-            if (portValue.getPortName().equals(TestAcceptor.fromPostDeliveryRoute.getPortName())) {
-                ImmutableDeliveryRoute deliveryRoute = TestAcceptor.fromPostDeliveryRoute.getValue(portValue);
+            if (portValue.getPortName().equals(AbstractManufacturerTest.TestAcceptor.fromPostDeliveryRoute.getPortName())) {
+                ImmutableDeliveryRoute deliveryRoute = AbstractManufacturerTest.TestAcceptor.fromPostDeliveryRoute.getValue(portValue);
                 // Expect one deliveries on day 1 and day 2
                 acceptorState.deliveriesRoutesReceived.get(day).add(deliveryRoute);
-            } else if (portValue.getPortName().equals(TestAcceptor.fromDailyInventoryCost.getPortName())) {
-                ImmutableInventoryCost inventoryCost = TestAcceptor.fromDailyInventoryCost.getValue(portValue);
+            } else if (portValue.getPortName().equals(AbstractManufacturerTest.TestAcceptor.fromDailyInventoryCost.getPortName())) {
+                ImmutableInventoryCost inventoryCost = AbstractManufacturerTest.TestAcceptor.fromDailyInventoryCost.getValue(portValue);
                 if (day == 1) {
                     acceptorState.day1CostReceived = true;
                     assertEquals(21.3, inventoryCost.getCost(), 0.01);

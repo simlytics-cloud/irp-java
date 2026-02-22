@@ -1,6 +1,7 @@
 package iso.example.irpsystem.irpmodel.impl;
 
 import devs.utils.Schedule.ScheduledEvent;
+import iso.example.irpsystem.irpmodel.InventoryRouting.RetailerState;
 import java.time.Duration;
 import java.util.List;
 
@@ -13,7 +14,7 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableRetailerState;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
 import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
-public class RetailerImpl extends Retailer {
+public class RetailerImpl extends Retailer<ImmutableRetailerProperties, RetailerState, ImmutableRetailerState> {
 
     static record UpdateInventoryEvent() {
     }

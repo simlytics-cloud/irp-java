@@ -1,7 +1,6 @@
 package iso.example.irpsystem.irpmodel;
 
 import devs.CoupledModelFactory;
-import devs.OutputCouplingHandler;
 import devs.PDevsCouplings;
 import devs.RootCoordinator;
 import devs.SimulatorProvider;
@@ -29,7 +28,7 @@ public abstract class DevsModelTest<T extends SimTime> {
   protected abstract Acceptor<T, ?> buldAcceptor(AtomicReference<Throwable> failureRef);
 
   protected abstract SimulatorProvider<T> buildDevsModelProvider();
-  protected abstract OutputCouplingHandler buildTestOutputCouplings();
+  protected abstract PDevsCouplings buildCouplings();
 
   protected void executeExperimentalFrame(T startTime, T endTime, String simulationId,
       long timeoutSeconds)
@@ -47,10 +46,7 @@ public abstract class DevsModelTest<T extends SimTime> {
       simulatorProviders.add(acceptor.getDevsSimulatorProvider());
       simulatorProviders.add(buildDevsModelProvider());
 
-      PDevsCouplings couplings = new PDevsCouplings(
-          Collections.emptyList(),
-          Collections.singletonList(buildTestOutputCouplings())
-      );
+      PDevsCouplings couplings = buildCouplings();
 
       CoupledModelFactory<T> coupledModelFactory =
           new CoupledModelFactory<>("vehicleImplTest", simulatorProviders, couplings);

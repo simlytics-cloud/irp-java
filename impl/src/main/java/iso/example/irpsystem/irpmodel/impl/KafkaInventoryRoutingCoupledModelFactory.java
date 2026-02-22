@@ -14,17 +14,17 @@ import devs.iso.DevsMessage;
 import devs.iso.time.LongSimTime;
 import devs.proxy.KafkaReceiver;
 
-public class InventoryRoutingCoupledModelFactory  extends CoupledModelFactory<LongSimTime> {
+public class KafkaInventoryRoutingCoupledModelFactory extends CoupledModelFactory<LongSimTime> {
 
     protected Config kafkaConsumerConfig = null;
     protected String kafkaTopic = "";
 
-    public InventoryRoutingCoupledModelFactory(String modelIdentifier,
+    public KafkaInventoryRoutingCoupledModelFactory(String modelIdentifier,
             List<SimulatorProvider<LongSimTime>> simulatorProviders, PDevsCouplings couplings) {
         super(modelIdentifier, simulatorProviders, couplings);
     }
 
-    public InventoryRoutingCoupledModelFactory(String modelIdentifier,
+    public KafkaInventoryRoutingCoupledModelFactory(String modelIdentifier,
             List<SimulatorProvider<LongSimTime>> simulatorProviders, PDevsCouplings couplings,
             Config kafkaConsumerConfig,
             String kafkaTopic) {
@@ -32,7 +32,7 @@ public class InventoryRoutingCoupledModelFactory  extends CoupledModelFactory<Lo
         this.kafkaConsumerConfig = kafkaConsumerConfig;
     }
 
-    public InventoryRoutingCoupledModelFactory(String modelIdentifier,
+    public KafkaInventoryRoutingCoupledModelFactory(String modelIdentifier,
             List<SimulatorProvider<LongSimTime>> simulatorProviders, PDevsCouplings couplings,
             List<String> loggingModels) {
         super(modelIdentifier, simulatorProviders, couplings, loggingModels);

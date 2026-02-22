@@ -1,5 +1,12 @@
 package iso.example.irpsystem.irpmodel.impl;
 
+import devs.couplings.CouplingTarget;
+import devs.couplings.DynamicCouplingResolver;
+import devs.couplings.StaticCouplingResolver;
+import devs.iso.PortValue;
+import iso.example.irpsystem.irpdomain.ImmutableDelivery;
+import iso.example.irpsystem.irpdomain.ImmutableDeliveryRoute;
+import iso.example.irpsystem.irpmodel.BasicInventoryRouting.AbstractBasicInventoryRoutingFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,15 +19,12 @@ import devs.CoupledModelFactory;
 import devs.PDevsCouplings;
 import devs.SimulatorProvider;
 import devs.iso.time.LongSimTime;
-import devs.proxy.KafkaLocalProxy.ProxyProperties;
 import devs.proxy.KafkaDevsStreamProxyProvider;
-import devs.proxy.KafkaReceiver;
 import devs.utils.ImmutableSchedule;
 import devs.utils.Schedule;
 import iso.example.irpsystem.irpdomain.Coordinate;
 import iso.example.irpsystem.irpdomain.DeliveryRoute;
 import iso.example.irpsystem.irpdomain.ImmutableCoordinate;
-import iso.example.irpsystem.irpmodel.InventoryRouting.AbstractInventoryRoutingFactory;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableFacilityProps;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableManufacturerProperties;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableManufacturerState;
@@ -28,25 +32,24 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableRetailerProperti
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableRetailerState;
 import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableVehicleProperties;
 import iso.example.irpsystem.irpmodel.InventoryRouting.InventoryRouting;
-import iso.example.irpsystem.irpmodel.InventoryRouting.InventoryRoutingInputCouplingHandler;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Manufacturer;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Vehicle;
 import iso.example.irpsystem.irpmodel.InventoryRouting.VehicleState;
 import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 
-public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
+public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingFactory {
 
     private final IrpData irpData;
     private final Map<String, RemoteModel> remoteModels = new HashMap<>();
     Config kafkaConsumerConfig;
     Config kafkaProducerConfig;
 
-    public InventoryRoutingFactory(IrpData irpData) {
+    public BasicInventoryRoutingFactory(IrpData irpData) {
         this.irpData = irpData;
     }
 
-    public InventoryRoutingFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
+    public BasicInventoryRoutingFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
         Config kafkaConsumerConfig, Config kafkaProducerConfig) {
         this.irpData = irpData;
         this.remoteModels.putAll(remoteModels);
@@ -54,6 +57,43 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
         this.kafkaProducerConfig = kafkaProducerConfig;
     }
 
+    @Override
+    protected PDevsCouplings buildCouplings() {
+
+        PDevsCouplings couplings = PDevsCouplings.builder(basicInventoryRoutingIdentifier)
+            .addConnection("basicInventoryRouting", InventoryRouting.receiveDeliverySchedule.getPortName(),
+                "manufacturer", Manufacturer.acceptDeliverySchedule.getPortName())
+            .addResolver("manufacturer", Manufacturer.postDeliveryRoute.getPortName(),
+                new DynamicCouplingResolver() {
+                    @Override
+                    public List<CouplingTarget> resolve(String sender, PortValue<?> portValue) {
+                        ImmutableDeliveryRoute deliveryRoute = Manufacturer.postDeliveryRoute.getValue(portValue);
+                        return List.of(CouplingTarget.of(
+                            "vehicle" + deliveryRoute.getVehicleId(),
+                            Vehicle.acceptDeliveryRoute.getPortName()));
+                    }
+                })
+            .addPatternResolver("vehicle\\d+", Vehicle.dropDelivery.getPortName(),
+                new DynamicCouplingResolver() {
+                @Override
+                    public List<CouplingTarget> resolve(String sender, PortValue<?> portValue) {
+                        ImmutableDelivery immutableDelivery = Vehicle.dropDelivery.getValue(portValue);
+                        return List.of(CouplingTarget.of(
+                            "retailer" + immutableDelivery.getRetailerId(),
+                            Retailer.receiveDelivery.getPortName()));
+                    }
+                })
+            .addConnection("manufacturer", Retailer.dailyInventoryCost.getPortName(),
+                "basicInventoryRouting", InventoryRouting.reportInventoryCost.getPortName())
+            .addPatternResolver("retailer\\d+", Manufacturer.dailyInventoryCost.getPortName(),
+                new StaticCouplingResolver(List.of(CouplingTarget.of(
+                    "basicInventoryRouting", InventoryRouting.reportInventoryCost.getPortName()))))
+            .addPatternResolver("vehicle\\d+", Vehicle.dailyDeliveryCost.getPortName(),
+                new StaticCouplingResolver(List.of(CouplingTarget.of(
+                    "basicInventoryRouting", InventoryRouting.reportVehicleCost.getPortName()))))
+            .build();
+        return couplings;
+    }
 
     @Override
     protected List<Manufacturer> buildManufacturers() {
@@ -70,7 +110,7 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
             .currentTime(LongSimTime.create(0))
             .schedule(new ImmutableSchedule<>(new TreeMap<>()))
             .build();
-        ManufacturerImpl manufacturerImpl = new ManufacturerImpl(initialState, properties);
+        ManufacturerImpl manufacturerImpl = new ManufacturerImpl(initialState, manufacturerIdentifier, properties);
         return List.of(manufacturerImpl);
         
     }
@@ -96,7 +136,7 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
                 .schedule(new Schedule<>())
                 .build();
 
-            VehicleImpl vehicleImpl = new VehicleImpl(vehicleState.toImmutable(), Vehicle.modelIdentifier + (i + 1), vehicleProperties);      
+            VehicleImpl vehicleImpl = new VehicleImpl(vehicleState.toImmutable(), "vehicle" + (i + 1), vehicleProperties);
             vehicles.add(vehicleImpl);     
         }
         return vehicles;
@@ -128,7 +168,7 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
             .minInventory(retailerData.minInventory())
             .maxInventory(retailerData.maxInventory())
             .build();
-        return new RetailerImpl(retailerState, Retailer.modelIdentifier + retailerData.id(), properties);    
+        return new RetailerImpl(retailerState, "retailer" + retailerData.id(), properties);
     }
 
     protected List<SimulatorProvider<LongSimTime>> buildRetailerSimulatorProviders() {
@@ -149,21 +189,25 @@ public class InventoryRoutingFactory extends AbstractInventoryRoutingFactory {
 
     public CoupledModelFactory<LongSimTime> buildCoupledModelFactory() {
         List<SimulatorProvider<LongSimTime>> simulatorProviders = new ArrayList<>();
-        simulatorProviders.addAll(buildVehicles().stream().map(v -> v.getDevsSimulatorProvider()).toList());
+        for (Vehicle vehicle: buildVehicles()) {
+            simulatorProviders.add(vehicle.getDevsSimulatorProvider());
+        }
         simulatorProviders.addAll(buildRetailerSimulatorProviders());
-        simulatorProviders.addAll(buildManufacturers().stream().map(v -> v.getDevsSimulatorProvider()).toList());
-        PDevsCouplings couplings = new PDevsCouplings(List.of(new InventoryRoutingInputCouplingHandler()), 
-            List.of(new MultipleVehicleOutputCouplingHandler()));
+        List<Manufacturer> manufacturers = buildManufacturers();
+        for (Manufacturer manufacturer : manufacturers) {
+            simulatorProviders.add(manufacturer.getDevsSimulatorProvider());
+        }
+        PDevsCouplings couplings = buildCouplings();
         if (!remoteModels.isEmpty()) {
-            return new InventoryRoutingCoupledModelFactory(
-                InventoryRouting.modelIdentifier, 
+            return new KafkaInventoryRoutingCoupledModelFactory(
+                basicInventoryRoutingIdentifier,
                 simulatorProviders, 
                 couplings,
                 kafkaConsumerConfig,
                 ""
                 );
         }
-        return new CoupledModelFactory<>(InventoryRouting.modelIdentifier, simulatorProviders, couplings);
+        return new CoupledModelFactory<>(basicInventoryRoutingIdentifier, simulatorProviders, couplings);
     }
 
 }

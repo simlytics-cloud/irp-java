@@ -30,6 +30,7 @@ public class KafkaInventoryRoutingCoupledModelFactory extends CoupledModelFactor
             String kafkaTopic) {
         super(modelIdentifier, simulatorProviders, couplings);
         this.kafkaConsumerConfig = kafkaConsumerConfig;
+        this.kafkaTopic = kafkaTopic;
     }
 
     public KafkaInventoryRoutingCoupledModelFactory(String modelIdentifier,
@@ -44,7 +45,7 @@ public class KafkaInventoryRoutingCoupledModelFactory extends CoupledModelFactor
         ActorRef<DevsMessage> coordinator = super.provideSimulator(context, initialTime);
         if (kafkaConsumerConfig != null) {
             context.spawn(KafkaReceiver.create(coordinator, null, modelIdentifier, kafkaConsumerConfig, 
-                "irp-system"), "irpsystemproxy");
+                kafkaTopic), modelIdentifier + "Proxy");
         }
         return coordinator;
     }

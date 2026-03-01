@@ -11,10 +11,10 @@ import devs.iso.DevsMessage;
 import devs.iso.time.LongSimTime;
 import java.time.Duration;
 import java.util.Map;
-import iso.example.irpsystem.irpmodel.BasicInventoryRouting.*;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.DeliveryScheduleGenerator.*;
 import iso.example.irpsystem.irpmodel.InventoryRouting.*;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.Transducer.*;
+import iso.example.irpsystem.irpmodel.BasicInventoryRouting.*;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.*;
 
 public class BasicExperimentalFrame extends PDevsCoordinator<LongSimTime> {

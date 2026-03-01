@@ -7,10 +7,10 @@
   "numVehicles": 2,
   "coordinatorServer": "localhost:29092",
   "coordinatorTopic": "irp-system",
-  "participants": ["LocalJava", "RemoteRunnersJava","RemoteRunnersAdevs"],
+  "participants": ["LocalJava", "RemoteRunnersJava"],
   "vehicleHosts": {
     "vehicle0": "LocalJava",
-    "vehicle1": "RemoteRunnersAdevs"
+    "vehicle1": "RemoteRunnersJava"
   },
   "manufacturer": {
     "id": 0,
@@ -42,7 +42,7 @@
       "minInventory": 0.0,
       "dailyConsumption": 35.0,
       "inventoryCost": 0.03,
-      "host": "RemoteRunnersAdevs"
+      "host": "RemoteRunnersJava"
     },
     {
       "id": 2,

@@ -27,21 +27,22 @@ import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFrameFactory {
 
     protected final IrpData irpData;
-    private final Map<String, RemoteModel> remoteModels = new HashMap<>();
+    protected final String localSystemName;
     Config kafkaConsumerConfig;
     Config kafkaProducerConfig;
 
-    public BasicExperimentalFrameFactory(IrpData irpData) {
+    public BasicExperimentalFrameFactory(IrpData irpData, String localSystemName) {
         this.irpData = irpData;
+        this.localSystemName = localSystemName;
     }
 
-    public BasicExperimentalFrameFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
+    public BasicExperimentalFrameFactory(IrpData irpData, String localSystemName,
         Config kafkaConsumerConfig,
         Config kafkaProducerConfig) {
         this.irpData = irpData;
+        this.localSystemName = localSystemName;
         this.kafkaConsumerConfig = kafkaConsumerConfig;
         this.kafkaProducerConfig = kafkaProducerConfig;
-        this.remoteModels.putAll(remoteModels);
     }
 
     @Override
@@ -49,14 +50,14 @@ public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFram
         Map<Integer, Map<Integer, DeliveryRoute>> deliveriesByDayByVehicle = new HashMap<>();
         for (int day = 1; day <= irpData.numTimePeriods(); day++) { // For each day
             // Greedily load each vehicle up with retailer's daily usage until the vehicle if full
-            int retailerId = 1;
+            int retailerId = 0;
             Map<Integer, DeliveryRoute> dailyDeliveries = new HashMap<>();
-            for (int vehicleId = 1; vehicleId <= irpData.numVehicles(); vehicleId++) {
+            for (int vehicleId = 0; vehicleId < irpData.numVehicles(); vehicleId++) {
                 DeliveryRoute deliveryRoute = DeliveryRoute.builder().vehicleId(vehicleId).build();           
-                RetailerData retailerData = irpData.retailers().get(retailerId - 1);
+                RetailerData retailerData = irpData.retailers().get(retailerId);
                 double loadedQuantity = retailerData.dailyConsumption();
                 double vehicleLoad = 0.0;
-                while (vehicleLoad + loadedQuantity < irpData.vehicleCapacity() && retailerId <= irpData.retailers().size()) {
+                while (vehicleLoad + loadedQuantity < irpData.vehicleCapacity() && retailerId < irpData.retailers().size()) {
                     vehicleLoad += loadedQuantity;
                     Delivery delivery = Delivery.builder()
                         .productAmount(loadedQuantity)
@@ -107,10 +108,10 @@ public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFram
     protected AbstractBasicInventoryRoutingFactory buildBasicInventoryRoutingFactory() {
         BasicInventoryRoutingFactory inventoryRoutingFactory;
         if (kafkaConsumerConfig != null && kafkaProducerConfig != null) {
-            inventoryRoutingFactory = new BasicInventoryRoutingFactory(irpData, remoteModels,
+            inventoryRoutingFactory = new BasicInventoryRoutingFactory(irpData, localSystemName,
                 kafkaConsumerConfig, kafkaProducerConfig);
         } else  {
-            inventoryRoutingFactory = new BasicInventoryRoutingFactory(irpData);
+            inventoryRoutingFactory = new BasicInventoryRoutingFactory(irpData, localSystemName);
         }
         return inventoryRoutingFactory;
     }

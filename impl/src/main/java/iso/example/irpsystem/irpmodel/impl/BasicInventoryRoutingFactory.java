@@ -41,18 +41,19 @@ import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingFactory {
 
     private final IrpData irpData;
-    private final Map<String, RemoteModel> remoteModels = new HashMap<>();
+    private final String localSystemName;
     Config kafkaConsumerConfig;
     Config kafkaProducerConfig;
 
-    public BasicInventoryRoutingFactory(IrpData irpData) {
+    public BasicInventoryRoutingFactory(IrpData irpData, String localSystemName) {
         this.irpData = irpData;
+        this.localSystemName = localSystemName;
     }
 
-    public BasicInventoryRoutingFactory(IrpData irpData, Map<String, RemoteModel> remoteModels,
+    public BasicInventoryRoutingFactory(IrpData irpData, String localSystemName,
         Config kafkaConsumerConfig, Config kafkaProducerConfig) {
         this.irpData = irpData;
-        this.remoteModels.putAll(remoteModels);
+        this.localSystemName = localSystemName;
         this.kafkaConsumerConfig = kafkaConsumerConfig;
         this.kafkaProducerConfig = kafkaProducerConfig;
     }
@@ -95,8 +96,7 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
         return couplings;
     }
 
-    @Override
-    protected List<Manufacturer> buildManufacturers() {
+    public static ManufacturerImpl buildManufacturer(IrpData irpData) {
         ImmutableManufacturerProperties properties = ImmutableManufacturerProperties.builder()
             .dailyProduction(irpData.manufacturer().dailyProduction())
             .facilityProperties(ImmutableFacilityProps.builder()
@@ -110,36 +110,48 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
             .currentTime(LongSimTime.create(0))
             .schedule(new ImmutableSchedule<>(new TreeMap<>()))
             .build();
-        ManufacturerImpl manufacturerImpl = new ManufacturerImpl(initialState, manufacturerIdentifier, properties);
-        return List.of(manufacturerImpl);
-        
+        return new ManufacturerImpl(initialState, manufacturerIdentifier, properties);
+    }
+
+    @Override
+    protected List<Manufacturer> buildManufacturers() {
+        return List.of(buildManufacturer(irpData));
     }
 
     @Override
     protected List<Vehicle> buildVehicles() {
         List<Vehicle> vehicles = new ArrayList<>();
         for (int i = 0; i < irpData.numVehicles(); i++) {
-            ImmutableVehicleProperties vehicleProperties = ImmutableVehicleProperties.builder()
-                .vehicleId(0)
-                .capacity(irpData.vehicleCapacity())
-                .costPerKm(irpData.vehicleCostPerKm())
-                .speedKmHr(irpData.vehicleSpeekKmHr())
-                .build();
-            VehicleState vehicleState = VehicleState.builder()
-                .location(Coordinate.builder()
-                    .x(0.0)
-                    .y(0.0)
-                    .build())
-                .deliveryRoute(DeliveryRoute.builder().vehicleId(i + 1).build())
-                .dailyKmTraveled(0.0)
-                .currentTime(LongSimTime.create(0))
-                .schedule(new Schedule<>())
-                .build();
-
-            VehicleImpl vehicleImpl = new VehicleImpl(vehicleState.toImmutable(), "vehicle" + (i + 1), vehicleProperties);
-            vehicles.add(vehicleImpl);     
+            Vehicle vehicleImpl = buildVehicle(i, irpData);
+            vehicles.add(vehicleImpl);
         }
         return vehicles;
+    }
+
+    public static VehicleImpl buildVehicle(int vehicleId, IrpData irpData) {
+        ImmutableVehicleProperties vehicleProperties = ImmutableVehicleProperties.builder()
+            .vehicleId(vehicleId)
+            .capacity(irpData.vehicleCapacity())
+            .costPerKm(irpData.vehicleCostPerKm())
+            .speedKmHr(irpData.vehicleSpeedKmHr())
+            .manufacturerLocation(ImmutableCoordinate.builder()
+                .x(irpData.manufacturer().x())
+                .y(irpData.manufacturer().y())
+                .build())
+            .build();
+        VehicleState vehicleState = VehicleState.builder()
+            .location(Coordinate.builder()
+                .x(0.0)
+                .y(0.0)
+                .build())
+            .deliveryRoute(DeliveryRoute.builder().vehicleId(vehicleId).build())
+            .dailyKmTraveled(0.0)
+            .currentTime(LongSimTime.create(0))
+            .schedule(new Schedule<>())
+            .build();
+
+        VehicleImpl vehicleImpl = new VehicleImpl(vehicleState.toImmutable(), "vehicle" + vehicleId, vehicleProperties);
+        return vehicleImpl;
     }
 
     @Override
@@ -171,13 +183,45 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
         return new RetailerImpl(retailerState, "retailer" + retailerData.id(), properties);
     }
 
+    protected List<SimulatorProvider<LongSimTime>> buildVehicleSimulatorProviders() {
+        List<SimulatorProvider<LongSimTime>> vehicleProviders = new ArrayList<>();
+        for (int i = 0; i < irpData.numVehicles(); i++) {
+            String componentName = "vehicle" + (i);
+            String host = irpData.vehicleHosts().get(componentName);
+            if (host != null && !localSystemName.equals(host)) {
+                String topic = irpData.coordinatorTopic();
+                KafkaDevsStreamProxyProvider<LongSimTime> proxyProvider = new KafkaDevsStreamProxyProvider<>(componentName, topic, kafkaProducerConfig);
+                vehicleProviders.add(proxyProvider);
+            } else {
+                vehicleProviders.add(buildVehicle(i, irpData).getDevsSimulatorProvider());
+            }
+        }
+        return vehicleProviders;
+    }
+
+    protected List<SimulatorProvider<LongSimTime>> buildManufacturerSimulatorProviders() {
+        List<SimulatorProvider<LongSimTime>> manufacturerProviders = new ArrayList<>();
+        String componentName = manufacturerIdentifier;
+        String host = irpData.manufacturer().host();
+        if (host != null && !localSystemName.equals(host)) {
+            String topic = irpData.coordinatorTopic();
+            KafkaDevsStreamProxyProvider<LongSimTime> proxyProvider = new KafkaDevsStreamProxyProvider<>(componentName, topic, kafkaProducerConfig);
+            manufacturerProviders.add(proxyProvider);
+        } else {
+            for (Manufacturer manufacturer : buildManufacturers()) {
+                manufacturerProviders.add(manufacturer.getDevsSimulatorProvider());
+            }
+        }
+        return manufacturerProviders;
+    }
+
     protected List<SimulatorProvider<LongSimTime>> buildRetailerSimulatorProviders() {
         List<SimulatorProvider<LongSimTime>> retailerProviders = new ArrayList<>();
         for (int i = 0; i < irpData.retailers().size(); i++) {
             RetailerData retailerData = irpData.retailers().get(i);
             String componentName = "retailer" + retailerData.id();
-            if (remoteModels.containsKey(componentName)) {
-                String topic = remoteModels.get(componentName).topic();
+            if (!localSystemName.equals(retailerData.host())) {
+                String topic = irpData.coordinatorTopic();
                 KafkaDevsStreamProxyProvider<LongSimTime> proxyProvider = new KafkaDevsStreamProxyProvider<>(componentName, topic, kafkaProducerConfig);    
                 retailerProviders.add(proxyProvider);
             } else {
@@ -189,22 +233,22 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
 
     public CoupledModelFactory<LongSimTime> buildCoupledModelFactory() {
         List<SimulatorProvider<LongSimTime>> simulatorProviders = new ArrayList<>();
-        for (Vehicle vehicle: buildVehicles()) {
-            simulatorProviders.add(vehicle.getDevsSimulatorProvider());
-        }
+        simulatorProviders.addAll(buildVehicleSimulatorProviders());
         simulatorProviders.addAll(buildRetailerSimulatorProviders());
-        List<Manufacturer> manufacturers = buildManufacturers();
-        for (Manufacturer manufacturer : manufacturers) {
-            simulatorProviders.add(manufacturer.getDevsSimulatorProvider());
-        }
+        simulatorProviders.addAll(buildManufacturerSimulatorProviders());
         PDevsCouplings couplings = buildCouplings();
-        if (!remoteModels.isEmpty()) {
+        
+        boolean hasRemoteRetailers = irpData.retailers().stream().anyMatch(r -> !localSystemName.equals(r.host()));
+        boolean hasRemoteVehicles = irpData.vehicleHosts().values().stream().anyMatch(h -> !localSystemName.equals(h));
+        boolean hasRemoteManufacturer = !localSystemName.equals(irpData.manufacturer().host());
+        
+        if (hasRemoteRetailers || hasRemoteVehicles || hasRemoteManufacturer) {
             return new KafkaInventoryRoutingCoupledModelFactory(
                 basicInventoryRoutingIdentifier,
                 simulatorProviders, 
                 couplings,
                 kafkaConsumerConfig,
-                ""
+                irpData.coordinatorTopic() != null ? irpData.coordinatorTopic() : "irp-system"
                 );
         }
         return new CoupledModelFactory<>(basicInventoryRoutingIdentifier, simulatorProviders, couplings);

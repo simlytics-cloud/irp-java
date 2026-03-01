@@ -39,15 +39,18 @@ public class ImmutableVehicleProperties  implements Immutable, IVehiclePropertie
     @NonNull
     protected final Double capacity;
     @NonNull
+    protected final ImmutableCoordinate manufacturerLocation;
+    @NonNull
     protected final Double costPerKm;
     @NonNull
     protected final Double speedKmHr;
 
 @JsonCreator
-public ImmutableVehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
+public ImmutableVehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("manufacturerLocation") ImmutableCoordinate manufacturerLocation, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
   super();
   this.vehicleId = vehicleId;
   this.capacity = capacity;
+  this.manufacturerLocation = manufacturerLocation;
   this.costPerKm = costPerKm;
   this.speedKmHr = speedKmHr;
 }

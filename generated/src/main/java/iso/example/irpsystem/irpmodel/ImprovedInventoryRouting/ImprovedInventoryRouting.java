@@ -11,12 +11,11 @@ import devs.iso.DevsMessage;
 import devs.iso.time.LongSimTime;
 import java.time.Duration;
 import java.util.Map;
-
 import iso.example.irpsystem.irpmodel.InventoryRouting.*;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Manufacturer.*;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Vehicle.*;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer.*;
-import iso.example.irpsystem.irpmodel.InventoryRouting.*;
+import iso.example.irpsystem.irpmodel.ImprovedInventoryRouting.ImprovedVehicle.*;
 
 public class ImprovedInventoryRouting extends PDevsCoordinator<LongSimTime> {
 

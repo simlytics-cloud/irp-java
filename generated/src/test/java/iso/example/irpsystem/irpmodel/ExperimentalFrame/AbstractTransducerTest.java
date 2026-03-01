@@ -14,7 +14,7 @@ import devs.iso.PortValue;
 import devs.iso.time.LongSimTime;
 import devs.msg.mutability.ImmutablePort;
 import devs.msg.state.ScheduleState;
-import iso.example.irpsystem.irpmodel.DevsModelTest;
+import devs.DevsModelTest;
 import iso.example.irpsystem.irpdomain.*;
 
 public abstract class AbstractTransducerTest<A> extends DevsModelTest<LongSimTime> {

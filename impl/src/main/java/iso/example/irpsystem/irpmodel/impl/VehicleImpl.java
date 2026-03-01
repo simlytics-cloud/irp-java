@@ -51,7 +51,7 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
       // Return the extra load to the manufacturer
       ImmutableDelivery returnDelivery = ImmutableDelivery.builder()
         .retailerId(0)
-        .retailerLocation(new Coordinate(0.0, 0.0).toImmutable())
+        .retailerLocation(properties.getManufacturerLocation())
         .productAmount(totalQuantity - properties.getCapacity())
         .build();
       modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Vehicle.dropDelivery, returnDelivery);  
@@ -75,9 +75,9 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
         scheduleNextDelivery();
       } else  if (event instanceof ReturnToManufacturerEvent) {
         double distance = Distance.distanceBetween(modelState.getLocation().toImmutable(),
-            new ImmutableCoordinate(0.0, 0.0));
+            properties.getManufacturerLocation());
         modelState.setDailyKmTraveled(modelState.getDailyKmTraveled() + distance);
-        modelState.setLocation(new Coordinate(0.0, 0.0));
+        modelState.setLocation(properties.getManufacturerLocation().toMutable());
         double dailyCost = modelState.getDailyKmTraveled() * properties.getCostPerKm();
         int day = (int)(TimeUtils.simTimeToDuration(modelState.getCurrentTime()).toDaysPart() + 1);
         ImmutableVehicleCost immutableVehicleCost = ImmutableVehicleCost.builder()
@@ -86,6 +86,7 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
           .cost(dailyCost)
           .build();
         modelState.getSchedule().scheduleOutput(modelState.getCurrentTime(), Vehicle.dailyDeliveryCost, immutableVehicleCost);
+        modelState.setDailyKmTraveled(0.0);
       } else {
         throw new IllegalStateException("Unexpected event type: " + event.getClass());
       }
@@ -101,7 +102,7 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
   protected void scheduleReturnToManufacturer(LongSimTime currentTime) {
       // Compute delivery time
       double distance = Distance.distanceBetween(modelState.getLocation().toImmutable(),
-            new ImmutableCoordinate(0.0, 0.0));
+            properties.getManufacturerLocation());
       // Current time plus delivery duration plus travel time to next delivery
       long arrival = currentTime.getT() + TimeUtils.MINUTES_PER_DELIVERY + (long)(distance / (properties.getSpeedKmHr() / 60.0));
       modelState.getSchedule().scheduleInternalEvent(LongSimTime.create(arrival),

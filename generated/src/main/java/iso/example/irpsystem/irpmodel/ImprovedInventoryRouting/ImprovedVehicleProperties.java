@@ -39,8 +39,8 @@ public class ImprovedVehicleProperties extends VehicleProperties implements Muta
 
 
 @JsonCreator
-public ImprovedVehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
-  super(vehicleId, capacity, costPerKm, speedKmHr);
+public ImprovedVehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("manufacturerLocation") Coordinate manufacturerLocation, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
+  super(vehicleId, capacity, manufacturerLocation, costPerKm, speedKmHr);
 
 }
     

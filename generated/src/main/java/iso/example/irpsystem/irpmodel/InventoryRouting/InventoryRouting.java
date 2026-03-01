@@ -11,7 +11,6 @@ import devs.iso.DevsMessage;
 import devs.iso.time.LongSimTime;
 import java.time.Duration;
 import java.util.Map;
-
 import iso.example.irpsystem.irpdomain.*;
 
 public class InventoryRouting extends PDevsCoordinator<LongSimTime> {

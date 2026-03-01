@@ -40,15 +40,18 @@ public class VehicleProperties  implements Mutable, IVehicleProperties {
     @NonNull
     protected Double capacity;
     @NonNull
+    protected Coordinate manufacturerLocation;
+    @NonNull
     protected Double costPerKm;
     @NonNull
     protected Double speedKmHr;
 
 @JsonCreator
-public VehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
+public VehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("manufacturerLocation") Coordinate manufacturerLocation, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
   super();
   this.vehicleId = vehicleId;
   this.capacity = capacity;
+  this.manufacturerLocation = manufacturerLocation;
   this.costPerKm = costPerKm;
   this.speedKmHr = speedKmHr;
 }

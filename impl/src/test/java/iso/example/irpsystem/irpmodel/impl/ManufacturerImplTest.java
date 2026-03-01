@@ -1,15 +1,31 @@
 package iso.example.irpsystem.irpmodel.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import devs.CoupledModelFactory;
+import devs.PDevsCouplings;
+import devs.RootCoordinator;
+import devs.experimentalframe.Acceptor;
+import devs.experimentalframe.Generator;
+import devs.iso.DevsMessage;
+import devs.iso.SimulationInit;
+import devs.proxy.KafkaLocalProxy;
+import devs.proxy.KafkaLocalProxy.ProxyProperties;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.pekko.actor.testkit.typed.javadsl.ActorTestKit;
+import org.apache.pekko.actor.testkit.typed.javadsl.TestProbe;
+import org.apache.pekko.actor.typed.ActorRef;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +53,21 @@ import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 public class ManufacturerImplTest extends AbstractManufacturerTest<ManufacturerImplTest.ManufacturerAcceptoState>{
 
     static IrpData irpData = IrpData.read(IrpReaderTest.path);
+    @Override
+    protected PDevsCouplings buildCouplings() {
+        PDevsCouplings couplings = PDevsCouplings.builder(coupledModelName)
+            .addConnection(testGeneratorIdentifier, "toAcceptDeliverySchedule",
+                "manufacturer", "acceptDeliverySchedule")
+            .addConnection(testGeneratorIdentifier, "toAcceptDelivery",
+                "manufacturer", "acceptDelivery")
+            .addConnection("manufacturer", "postDeliveryRoute",
+                testAcceptorIdentifier, "fromPostDeliveryRoute")
+            .addConnection("manufacturer", "dailyInventoryCost",
+                testAcceptorIdentifier, "fromDailyInventoryCost")
+            .build();
+        return couplings;
+    }
+
     @Override
     protected ScheduleState<LongSimTime> buildGeneratorState() {
         ImmutableDeliverySchedule immutableDeliverySchedule = VehicleImplTest.buildDeliverySchedule();
@@ -129,5 +160,103 @@ public class ManufacturerImplTest extends AbstractManufacturerTest<ManufacturerI
     executeExperimentalFrame(LongSimTime.create(0),
         TimeUtils.durationToSimTime(Duration.ofDays(2)), "ManufacturerTest", 5);
   }
+
+    protected SimulatorProvider<LongSimTime> buildRemoteSimulatorProvider() {
+        Config config = ConfigFactory.load();
+        Config kafkaClusterConfig = config.getConfig("kafka-cluster");
+        Config kafkaConsumerConfig = config.getConfig("kafka-readall-consumer");
+        ProxyProperties properties = new ProxyProperties("manufacturerImplTest", "irp-system", kafkaClusterConfig, "manufacturer", "irp-system", kafkaConsumerConfig);
+        return new KafkaLocalProxy.KafkaProxySimulatorProvider<>(properties);
+    }
+
+    @Override
+    protected Acceptor<LongSimTime, ?> buldAcceptor(AtomicReference<Throwable> failureRef) {
+        return new TestAcceptor(failureRef) {
+            @Override
+            public void internalStateTransitionFunction() {
+                try {
+                    assertTrue(modelState.day1CostReceived && modelState.deliveriesRoutesReceived.get(2).size() == 1,
+                        "Manufacturer did not send all inventory reports"
+                    );
+                } catch (Throwable t) {
+                    // Record it so the test thread can fail after termination
+                    failureRef.compareAndSet(null, t);
+                    // Swallow so simulation continues and can terminate normally
+                }
+            }
+
+            @Override
+            public LongSimTime timeAdvanceFunction() {
+                if (modelState.day1CostReceived && modelState.deliveriesRoutesReceived.get(2).size() == 1) {
+                    return LongSimTime.buildMaxValue();
+                } else {
+                    return TimeUtils.durationToSimTime(Duration.ofDays(2)
+                            .minusMinutes(1))
+                        .minus(modelState.getCurrentTime());
+                }
+            }
+        };
+    }
+
+    @Test
+    @DisplayName("Test Remote Manufacturer")
+    @Disabled("Requires Kafka Connection")
+    protected void testRemoteManufacturer()
+        throws InterruptedException {
+
+        LongSimTime startTime = LongSimTime.create(0);
+        LongSimTime endTime = TimeUtils.durationToSimTime(Duration.ofDays(2));
+
+        ActorTestKit testKit = ActorTestKit.create();
+        AtomicReference<Throwable> failureRef = new AtomicReference<>();
+
+        try {
+            Generator<LongSimTime> generator = buildGenerator();
+            Acceptor<LongSimTime, ?> acceptor = buldAcceptor(failureRef);
+
+            List<SimulatorProvider<LongSimTime>> simulatorProviders = new ArrayList<>();
+            simulatorProviders.add(generator.getDevsSimulatorProvider());
+            simulatorProviders.add(acceptor.getDevsSimulatorProvider());
+            simulatorProviders.add(buildRemoteSimulatorProvider());
+
+            PDevsCouplings couplings = buildCouplings();
+
+            CoupledModelFactory<LongSimTime> coupledModelFactory =
+                new CoupledModelFactory<>("manufacturerImplTest", simulatorProviders, couplings);
+
+            ActorRef<DevsMessage> testFrame =
+                testKit.spawn(coupledModelFactory.create(startTime), "manufacturerImplTest");
+            ActorRef<DevsMessage> rootCoordinator =
+                testKit.spawn(RootCoordinator.create(endTime, testFrame, "manufacturerImplTest"), "root");
+
+            rootCoordinator.tell(SimulationInit.<LongSimTime>builder()
+                .eventTime(startTime)
+                .simulationId("ManufacturerTest")
+                .messageId("SimulationInit")
+                .senderId("TestActor")
+                .receiverId("root")
+                .build());
+
+            TestProbe<DevsMessage> testProbe = testKit.createTestProbe();
+            try {
+                testProbe.expectTerminated(rootCoordinator, Duration.ofSeconds(60));
+            } catch (AssertionError timeoutOrOther) {
+                Throwable failure = failureRef.get();
+                if (failure != null) {
+                    if (failure instanceof AssertionError ae) throw ae;
+                    throw new AssertionError("Failure occurred inside actor thread", failure);
+                }
+                throw timeoutOrOther;
+            }
+
+            Throwable failure = failureRef.get();
+            if (failure != null) {
+                if (failure instanceof AssertionError ae) throw ae;
+                throw new AssertionError("Failure occurred inside actor thread", failure);
+            }
+        } finally {
+            testKit.shutdownTestKit();
+        }
+    }
 
 }

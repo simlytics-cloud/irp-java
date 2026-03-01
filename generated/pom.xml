@@ -18,6 +18,12 @@
       <groupId>cloud.simlytics</groupId>
       <artifactId>devs-streaming</artifactId>
     </dependency>
+      <dependency>
+      <groupId>cloud.simlytics</groupId>
+      <artifactId>devs-streaming</artifactId>
+      <classifier>tests</classifier>
+        <scope>test</scope>
+    </dependency>  
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>

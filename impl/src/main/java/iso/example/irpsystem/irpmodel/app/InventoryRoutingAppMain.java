@@ -1,15 +1,13 @@
 package iso.example.irpsystem.irpmodel.app;
 
 import com.typesafe.config.Config;
+import devs.PDEVSModel;
 import devs.PDevsSimulator;
 import devs.proxy.KafkaDevsStreamProxy;
 import devs.proxy.KafkaReceiver;
-import iso.example.irpsystem.irpmodel.InventoryRouting.InventoryRouting;
-import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
 import iso.example.irpsystem.irpmodel.impl.BasicExperimentalFrameFactory;
 import iso.example.irpsystem.irpmodel.impl.BasicInventoryRoutingFactory;
 import iso.example.irpsystem.irpmodel.impl.IrpData;
-import iso.example.irpsystem.irpmodel.impl.RemoteModel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -30,33 +28,29 @@ import devs.RootCoordinator;
 import devs.iso.DevsMessage;
 import devs.iso.SimulationInit;
 import devs.iso.time.LongSimTime;
-import iso.example.irpsystem.irpmodel.ExperimentalFrame.ExperimentalFrame;
 
 public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
 
     private ActorRef<DevsMessage> rootCoordinator;
     private ActorSystem<Void> actorSystem;
-    private final Map<String, RemoteModel> remoteModels;
-    private final Config kafkaClusterConfig;
-    private final Config kafkaConsumerConfig;
-    private final IrpData irpData;
+    private final String localSystemName;
+    private final String localProxyName;
 
 
     public InventoryRoutingAppMain(ActorContext<DevsMessage> context,
         LongSimTime startTime,
         LongSimTime endTime,
         CoupledModelFactory<LongSimTime> experimentalFrameFactory,
-        Map<String, RemoteModel> remoteModels,
+        String localSystemName,
+        String localProxyName,
         Config kafkaClusterConfig,
         Config kafkaConsumerConfig,
         IrpData irpData
     ) {
         super(context);
         actorSystem = context.getSystem();
-      this.remoteModels = remoteModels;
-      this.kafkaClusterConfig = kafkaClusterConfig;
-      this.kafkaConsumerConfig = kafkaConsumerConfig;
-      this.irpData = irpData;
+      this.localSystemName = localSystemName;
+      this.localProxyName = localProxyName;
       CompletionStage<Done> shutdowCompletionStage = actorSystem.getWhenTerminated();
         shutdowCompletionStage.toCompletableFuture().whenComplete((done, e) -> {
             if (e == null) {
@@ -66,9 +60,7 @@ public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
                 System.exit(1);
             }
         });
-        if (remoteModels != null && remoteModels.size() > 0) {
-            runRemoteModelsLocally(irpData, kafkaClusterConfig, kafkaConsumerConfig);
-        }
+        runLocalModels(irpData, kafkaClusterConfig, kafkaConsumerConfig);
         ActorRef<DevsMessage> experimentalFrame = context.spawn(experimentalFrameFactory.create(startTime), "inventoryRoutingApp");
         rootCoordinator = context.spawn(RootCoordinator.create(endTime, experimentalFrame,
             BasicExperimentalFrameFactory.basicExperimentalFrameIdentifier), "root");
@@ -85,7 +77,8 @@ public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
     public static Behavior<DevsMessage> create(LongSimTime startTime,
         LongSimTime endTime,
         CoupledModelFactory<LongSimTime> experimentalFrameFactory,
-        Map<String, RemoteModel> remoteModels,
+        String localSystemName,
+        String localProxyName,
         Config kafkaClusterConfig,
         Config kafkaConsumerConfig,
         IrpData irpData) {
@@ -95,50 +88,64 @@ public class InventoryRoutingAppMain extends AbstractBehavior <DevsMessage> {
                 startTime,
                 endTime,
                 experimentalFrameFactory,
-                remoteModels,
+                localSystemName,
+                localProxyName,
                 kafkaClusterConfig,
                 kafkaConsumerConfig,
                 irpData));
 
     }
 
-    protected void runRemoteModelsLocally(IrpData irpData
+    protected void runLocalModels(IrpData irpData
         , Config kafkaClusterConfig, Config kafkaConsumerConfig) {
 
         Map<String, ActorRef<DevsMessage>> coordinatorProxies = new HashMap<>();
 
-        for (String modelId : remoteModels.keySet()) {
-            if (modelId.startsWith("retailer")) {
-                RemoteModel remoteModel = remoteModels.get(modelId);
-                    if (remoteModel.runJava()) {
-                    // Create a proxy for the coordinator if it doesn't exist
-                    if (!coordinatorProxies.containsKey(remoteModel.topic())) {
-                        ActorRef<DevsMessage> coordinatorProxy =
-                            getContext().spawn(
-                                KafkaDevsStreamProxy.create(BasicInventoryRoutingFactory.basicInventoryRoutingIdentifier,
-                                    "irp-system",
-                                    kafkaClusterConfig), "inventoryRoutingCoordinatorProxy");
-                        coordinatorProxies.put(remoteModel.topic(), coordinatorProxy);
-                    }
-
-                    // Create the retailer
-                    char retailerId = modelId.charAt(modelId.length() - 1);
-                    int retailerIndex = Integer.parseInt(String.valueOf(retailerId)) - 1;
-                    Retailer retailer = BasicInventoryRoutingFactory.buildRetailer(irpData.retailers()
-                        .get(retailerIndex));
-
-                    ActorRef<DevsMessage> retailerSimulator = getContext().spawn(
-                        PDevsSimulator.create(retailer, LongSimTime.create(0)), modelId + "Simulator");
-
-
-                    ActorRef<DevsMessage> retailerReceiver = getContext().spawn(
-                        KafkaReceiver.create(retailerSimulator, coordinatorProxies.get(remoteModel.topic()), modelId, kafkaConsumerConfig,
-                            remoteModel.topic()), modelId + "Receiver");
-                }
+        for (IrpData.RetailerData retailerData : irpData.retailers()) {
+            String modelId = "retailer" + retailerData.id();
+            if (localProxyName.equals(retailerData.host())) {
+                createLocalProxy(modelId, BasicInventoryRoutingFactory.buildRetailer(retailerData),
+                    kafkaClusterConfig, kafkaConsumerConfig, coordinatorProxies);
             }
         }
 
+        if (localProxyName.equals(irpData.manufacturer().host())) {
+            String modelId = BasicInventoryRoutingFactory.manufacturerIdentifier;
+            createLocalProxy(modelId, BasicInventoryRoutingFactory.buildManufacturer(irpData),
+                kafkaClusterConfig, kafkaConsumerConfig, coordinatorProxies);
+        }
+        
+        for (String vehicleId : irpData.vehicleHosts().keySet()) {
+            if (localProxyName.equals(irpData.vehicleHosts().get(vehicleId))) {
+                int id = Integer.parseInt(vehicleId.replace("vehicle", ""));
+                createLocalProxy(vehicleId, BasicInventoryRoutingFactory.buildVehicle(id, irpData),
+                    kafkaClusterConfig, kafkaConsumerConfig, coordinatorProxies);
+            }
+        }
+    }
 
+    private void createLocalProxy(String modelId, PDEVSModel<LongSimTime, ?> retailer, Config kafkaClusterConfig,
+        Config kafkaConsumerConfig, Map<String, ActorRef<DevsMessage>> coordinatorProxies) {
+        
+        String topic = "irp-system"; // Default topic
+        
+        // Create a proxy for the coordinator if it doesn't exist
+        if (!coordinatorProxies.containsKey(topic)) {
+            ActorRef<DevsMessage> coordinatorProxy =
+                getContext().spawn(
+                    KafkaDevsStreamProxy.create(BasicInventoryRoutingFactory.basicInventoryRoutingIdentifier,
+                        topic,
+                        kafkaClusterConfig), modelId + "InventoryRoutingCoordinatorProxy");
+            coordinatorProxies.put(topic, coordinatorProxy);
+        }
+
+        ActorRef<DevsMessage> retailerSimulator = getContext().spawn(
+            PDevsSimulator.create(retailer, LongSimTime.create(0)), modelId + "Simulator");
+
+
+        getContext().spawn(
+            KafkaReceiver.create(retailerSimulator, coordinatorProxies.get(topic), modelId, kafkaConsumerConfig,
+                topic), modelId + "Receiver");
     }
 
 

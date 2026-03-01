@@ -32,6 +32,13 @@
         <artifactId>devs-streaming</artifactId>
         <version>3.0</version>
       </dependency>
+      <dependency>
+        <groupId>cloud.simlytics</groupId>
+        <artifactId>devs-streaming</artifactId>
+        <classifier>tests</classifier>
+        <scope>test</scope>
+        <version>3.0</version>
+      </dependency>
 
       <!-- Jackson -->
       <dependency>

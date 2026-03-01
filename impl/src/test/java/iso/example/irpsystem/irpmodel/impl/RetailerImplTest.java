@@ -4,16 +4,33 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import devs.CoupledModelFactory;
+import devs.PDevsCouplings;
+import devs.RootCoordinator;
 import devs.experimentalframe.Acceptor;
+import devs.experimentalframe.Generator;
+import devs.iso.DevsMessage;
+import devs.iso.SimulationInit;
 import devs.msg.state.ScheduleState;
 import devs.msg.state.TimeState;
 
+import devs.proxy.KafkaDevsStreamProxy;
+import devs.proxy.KafkaDevsStreamProxyProvider;
+import devs.proxy.KafkaLocalProxy;
+import devs.proxy.KafkaLocalProxy.ProxyProperties;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.pekko.actor.testkit.typed.javadsl.ActorTestKit;
+import org.apache.pekko.actor.testkit.typed.javadsl.TestProbe;
+import org.apache.pekko.actor.typed.ActorRef;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -43,6 +60,17 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
     static IrpData irpData = IrpData.read(IrpReaderTest.path);
 
     @Override
+    protected PDevsCouplings buildCouplings() {
+        PDevsCouplings couplings = PDevsCouplings.builder(coupledModelName)
+            .addConnection(testGeneratorIdentifier, "toReceiveDelivery",
+                "retailer1", "receiveDelivery")
+            .addConnection("retailer1", "dailyInventoryCost",
+                testAcceptorIdentifier, "fromDailyInventoryCost")
+            .build();
+        return couplings;
+    }
+
+    @Override
     protected ScheduleState<LongSimTime> buildGeneratorState() {
         ImmutableDeliverySchedule deliverySchedule = buildDeliverySchedule();
         ImmutableDelivery dayOneDelivery = deliverySchedule.getDeliveriesByDayByVehicle()
@@ -52,10 +80,10 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
             
         Schedule<LongSimTime> schedule = new Schedule<>();
         Duration day1Start = TimeUtils.OPENING_DURATION;
-        schedule.scheduleOutput(TimeUtils.durationToSimTime(day1Start), 
+        schedule.scheduleOutput(TimeUtils.durationToSimTime(day1Start.plus(Duration.ofHours(1))),
             AbstractRetailerTest.TestGenerator.toReceiveDelivery, dayOneDelivery);
         Duration day2Start = day1Start.plus(Duration.ofDays(1));
-        schedule.scheduleOutput(TimeUtils.durationToSimTime(day2Start), 
+        schedule.scheduleOutput(TimeUtils.durationToSimTime(day2Start.plus(Duration.ofHours(1))),
             AbstractRetailerTest.TestGenerator.toReceiveDelivery, dayTwoDelivery);
         return new ScheduleState<>(LongSimTime.create(0), schedule);
     }
@@ -141,7 +169,7 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
     }
 
     @Override
-    protected SimulatorProvider buildDevsModelProvider() {
+    protected SimulatorProvider<LongSimTime> buildDevsModelProvider() {
         RetailerData retailerData = irpData.retailers().get(1);
         ImmutableRetailerState retailerState = ImmutableRetailerState.builder()
             .currentInventory(retailerData.startingInventory())
@@ -159,9 +187,18 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
             .minInventory(retailerData.minInventory())
             .maxInventory(retailerData.maxInventory())
             .build();
-        RetailerImpl retailerImpl = new RetailerImpl(retailerState, modelIdentifier, properties);
+        RetailerImpl retailerImpl = new RetailerImpl(retailerState, "retailer1", properties);
         return retailerImpl.getDevsSimulatorProvider();
     }
+
+    protected SimulatorProvider<LongSimTime> buildRemoteSimulatorProvider() {
+        Config config = ConfigFactory.load();
+        Config kafkaClusterConfig = config.getConfig("kafka-cluster");
+        Config kafkaConsumerConfig = config.getConfig("kafka-readall-consumer");
+        ProxyProperties properties = new ProxyProperties("retailerImplTest", "irp-system", kafkaClusterConfig, "retailer1", "irp-system", kafkaConsumerConfig);
+        return new KafkaLocalProxy.KafkaProxySimulatorProvider<>(properties);
+    }
+
 
     @Override
     protected Acceptor<LongSimTime, ?> buldAcceptor(AtomicReference<Throwable> failureRef) {
@@ -200,5 +237,66 @@ public class RetailerImplTest extends AbstractRetailerTest<RetailerImplTest.Reta
     executeExperimentalFrame(LongSimTime.create(0),
         TimeUtils.durationToSimTime(Duration.ofDays(2)), "RetailerTest", 5);
   }
+
+    @Test
+    @DisplayName("Test Remote Retailer")
+    @Disabled("Requires Kafka Connection")
+    protected void testRemoteRetailer()
+        throws InterruptedException {
+
+        LongSimTime startTime = LongSimTime.create(0);
+        LongSimTime endTime = TimeUtils.durationToSimTime(Duration.ofDays(2));
+
+        ActorTestKit testKit = ActorTestKit.create();
+        AtomicReference<Throwable> failureRef = new AtomicReference<>();
+
+        try {
+            Generator<LongSimTime> generator = buildGenerator();
+            Acceptor<LongSimTime, ?> acceptor = buldAcceptor(failureRef);
+
+            List<SimulatorProvider<LongSimTime>> simulatorProviders = new ArrayList<>();
+            simulatorProviders.add(generator.getDevsSimulatorProvider());
+            simulatorProviders.add(acceptor.getDevsSimulatorProvider());
+            simulatorProviders.add(buildRemoteSimulatorProvider());
+
+            PDevsCouplings couplings = buildCouplings();
+
+            CoupledModelFactory<LongSimTime> coupledModelFactory =
+                new CoupledModelFactory<>("retailerImplTest", simulatorProviders, couplings);
+
+            ActorRef<DevsMessage> testFrame =
+                testKit.spawn(coupledModelFactory.create(startTime), "retailerImplTest");
+            ActorRef<DevsMessage> rootCoordinator =
+                testKit.spawn(RootCoordinator.create(endTime, testFrame, "retailerImplTest"), "root");
+
+            rootCoordinator.tell(SimulationInit.<LongSimTime>builder()
+                .eventTime(startTime)
+                .simulationId("RetailerTest")
+                .messageId("SimulationInit")
+                .senderId("TestActor")
+                .receiverId("root")
+                .build());
+
+            TestProbe<DevsMessage> testProbe = testKit.createTestProbe();
+            try {
+                testProbe.expectTerminated(rootCoordinator, Duration.ofSeconds(60));
+            } catch (AssertionError timeoutOrOther) {
+                Throwable failure = failureRef.get();
+                if (failure != null) {
+                    if (failure instanceof AssertionError ae) throw ae;
+                    throw new AssertionError("Failure occurred inside actor thread", failure);
+                }
+                throw timeoutOrOther;
+            }
+
+            Throwable failure = failureRef.get();
+            if (failure != null) {
+                if (failure instanceof AssertionError ae) throw ae;
+                throw new AssertionError("Failure occurred inside actor thread", failure);
+            }
+        } finally {
+            testKit.shutdownTestKit();
+        }
+    }
 
 }

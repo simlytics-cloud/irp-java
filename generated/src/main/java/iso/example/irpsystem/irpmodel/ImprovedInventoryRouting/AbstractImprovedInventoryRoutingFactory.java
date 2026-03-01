@@ -13,12 +13,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-
 import iso.example.irpsystem.irpmodel.InventoryRouting.*;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Manufacturer.*;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Vehicle.*;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer.*;
-import iso.example.irpsystem.irpmodel.InventoryRouting.*;
+import iso.example.irpsystem.irpmodel.ImprovedInventoryRouting.ImprovedVehicle.*;
 
 
 public abstract class AbstractImprovedInventoryRoutingFactory {

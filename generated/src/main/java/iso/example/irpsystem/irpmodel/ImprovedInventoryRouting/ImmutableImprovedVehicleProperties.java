@@ -38,8 +38,8 @@ public class ImmutableImprovedVehicleProperties extends ImmutableVehicleProperti
 
 
 @JsonCreator
-public ImmutableImprovedVehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
-  super(vehicleId, capacity, costPerKm, speedKmHr);
+public ImmutableImprovedVehicleProperties(@JsonProperty("vehicleId") Integer vehicleId, @JsonProperty("capacity") Double capacity, @JsonProperty("manufacturerLocation") ImmutableCoordinate manufacturerLocation, @JsonProperty("costPerKm") Double costPerKm, @JsonProperty("speedKmHr") Double speedKmHr) {
+  super(vehicleId, capacity, manufacturerLocation, costPerKm, speedKmHr);
 
 }
     

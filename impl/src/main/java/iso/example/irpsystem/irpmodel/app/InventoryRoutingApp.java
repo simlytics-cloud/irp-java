@@ -1,17 +1,7 @@
 package iso.example.irpsystem.irpmodel.app;
 
-import devs.utils.ConfigUtils;
-import devs.utils.KafkaUtils;
-import iso.example.irpsystem.irpmodel.impl.RemoteModel;
-import java.nio.file.Paths;
 import java.time.Duration;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ExecutionException;
-import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.pekko.actor.typed.ActorSystem;
 
 import com.typesafe.config.Config;
@@ -30,25 +20,23 @@ public class InventoryRoutingApp {
 
     protected final BasicExperimentalFrameFactory experimentalFrameFactory;
 
-    public InventoryRoutingApp(IrpData irpData, Map<String, RemoteModel> remoteModels) {
-        if (kafkaClusterConfig != null && kafkaConsumerConfig != null
-            && remoteModels != null && remoteModels.size() > 0) {
-            this.experimentalFrameFactory = new BasicExperimentalFrameFactory(irpData, remoteModels,
+    public InventoryRoutingApp(IrpData irpData, String localSystemName, String localProxyName) {
+        if (kafkaClusterConfig != null && kafkaConsumerConfig != null) {
+            this.experimentalFrameFactory = new BasicExperimentalFrameFactory(irpData, localSystemName,
                 kafkaConsumerConfig, kafkaClusterConfig);
         } else {
-            this.experimentalFrameFactory = new BasicExperimentalFrameFactory(irpData);
+            this.experimentalFrameFactory = new BasicExperimentalFrameFactory(irpData, localSystemName);
         }
     }
 
-    protected void executeExperimentalFrame(LongSimTime startTime, LongSimTime endTime, Map<String,
-        RemoteModel> remoteModels, IrpData irpData) {
+    protected void executeExperimentalFrame(LongSimTime startTime, LongSimTime endTime, String localSystemName, String localProxyName, IrpData irpData) {
         ActorSystem.create(InventoryRoutingAppMain.create(startTime, endTime, 
-            experimentalFrameFactory.buiCoupledModelFactory(), remoteModels,
+            experimentalFrameFactory.buiCoupledModelFactory(), localSystemName, localProxyName,
             kafkaClusterConfig, kafkaConsumerConfig, irpData),
             "InventoryRoutingSystem", config);
     }
 
-    public static void main(String[] args) throws ExecutionException, InterruptedException {
+    public static void main(String[] args) {
         if (args.length > 0) {
             String configName = args[0];
             config = ConfigFactory.load(configName);
@@ -56,35 +44,18 @@ public class InventoryRoutingApp {
             config = ConfigFactory.load();
         }
         Config irpSystemConfig = config.getConfig("irp-routing-app");
-        Map<String, RemoteModel> remoteModels = new HashMap<>();
-        if (irpSystemConfig.hasPath("remote-models")) {
-            Config remoteModelsConfig = irpSystemConfig.getConfig("remote-models");
-            for (String key : remoteModelsConfig.root().keySet()) {
-                Config remoteConfig = remoteModelsConfig.getConfig(key);
-                RemoteModel remoteModel = new RemoteModel(key, remoteConfig.getBoolean("run-java"),
-                    remoteConfig.getString("topic"));
-                remoteModels.put(key, remoteModel);
-            }
-        }
-        IrpData irpData = IrpData.read(Paths.get(irpSystemConfig.getString("irp-data-file")));
+        IrpData irpData = IrpData.read(irpSystemConfig.getString("irp-data-file"));
+        String localSystemName = irpSystemConfig.getString("local-system-name");
+        String localProxyName = irpSystemConfig.getString("local-proxy-name");
+
         if (config.hasPath("kafka-cluster") && config.hasPath("kafka-readall-consumer")) {
             kafkaClusterConfig = config.getConfig("kafka-cluster");
             kafkaConsumerConfig = config.getConfig("kafka-readall-consumer");
         }
-        if(kafkaClusterConfig != null && kafkaConsumerConfig != null && remoteModels.size() > 0) {
-            Properties kafkaClusterProperties = ConfigUtils.toProperties(kafkaClusterConfig);
-            AdminClient adminClient = KafkaUtils.createAdminClient(kafkaClusterProperties);
-            List<String> topics = remoteModels.values().stream()
-                .map(RemoteModel::topic)
-                .distinct()
-                .toList();
-            //KafkaUtils.createTopics(topics, adminClient, Optional.of(1), Optional.empty());
-            //Thread.sleep(5000);
-        }
 
-        InventoryRoutingApp inventoryRoutingApp = new InventoryRoutingApp(irpData, remoteModels);
+        InventoryRoutingApp inventoryRoutingApp = new InventoryRoutingApp(irpData, localSystemName, localProxyName);
         LongSimTime endTime = TimeUtils.durationToSimTime(Duration.ofDays(irpData.numTimePeriods() + 1));
-        inventoryRoutingApp.executeExperimentalFrame(LongSimTime.create(0), endTime, remoteModels, irpData);
+        inventoryRoutingApp.executeExperimentalFrame(LongSimTime.create(0), endTime, localSystemName, localProxyName, irpData);
     }
 
 }

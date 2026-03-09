@@ -24,14 +24,34 @@ import java.util.List;
 import devs.PDevsCoordinator;
 import devs.PDevsSimulator;
 
+/**
+ * Implementation of a Vehicle in the Inventory Routing Problem (IRP) simulation.
+ * A vehicle is responsible for delivering products from a manufacturer to various retailers
+ * following a prescribed delivery route.
+ */
 public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleState, ImmutableVehicleState> {
+  /**
+   * Event representing a delivery to a retailer.
+   *
+   * @param delivery The delivery details, including retailer and amount.
+   */
   public record DeliveryEvent(ImmutableDelivery delivery) {
   }
 
+  /**
+   * Event representing the vehicle returning to the manufacturer.
+   */
   public record ReturnToManufacturerEvent() {
 
   }
 
+  /**
+   * Constructs a new VehicleImpl.
+   *
+   * @param initialState The initial state of the vehicle.
+   * @param identifier   The unique identifier for this vehicle model.
+   * @param properties   The static properties of the vehicle (capacity, speed, etc.).
+   */
   public VehicleImpl(
       ImmutableVehicleState initialState,
       String identifier,
@@ -39,6 +59,13 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
     super(initialState, identifier, properties);
   }
 
+  /**
+   * Handles the acceptance of a new delivery route.
+   * Validates the route against vehicle capacity and schedules the first delivery.
+   *
+   * @param immutableDeliveryRoute The new delivery route to follow.
+   * @param elapsedTime            The time elapsed since the last state transition.
+   */
   @Override
   protected void handleAcceptDeliveryRoute(ImmutableDeliveryRoute immutableDeliveryRoute,
       LongSimTime elapsedTime) {
@@ -64,6 +91,11 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
     scheduleNextDelivery();
   }
 
+  /**
+   * Processes internal scheduled events such as reaching a delivery location or the manufacturer.
+   *
+   * @param events The list of events to process.
+   */
   @Override
   public void handleScheduledEvents(List<Object> events) {
     for (Object event: events) {
@@ -93,12 +125,24 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
     }
   }
 
+  /**
+   * Handles simultaneous internal and external transitions.
+   * In this implementation, it executes the internal transition followed by the external transition.
+   *
+   * @param inputs The list of port values received as input.
+   */
   @Override
   public void confluentStateTransitionFunction(List<PortValue<?>> inputs) {
     internalStateTransitionFunction();
     externalStateTransitionFunction(LongSimTime.create(0), inputs);
   }
 
+  /**
+   * Schedules an internal event for the vehicle to return to the manufacturer location.
+   * Calculates the arrival time based on current location, distance, and vehicle speed.
+   *
+   * @param currentTime The current simulation time.
+   */
   protected void scheduleReturnToManufacturer(LongSimTime currentTime) {
       // Compute delivery time
       double distance = Distance.distanceBetween(modelState.getLocation().toImmutable(),
@@ -109,6 +153,11 @@ public class VehicleImpl extends Vehicle<ImmutableVehicleProperties, VehicleStat
           new ReturnToManufacturerEvent());
   }
 
+  /**
+   * Schedules the next delivery in the current delivery route.
+   * If the route is empty or the next delivery would occur after closing time, 
+   * it schedules a return to the manufacturer.
+   */
   protected void scheduleNextDelivery() {
     LongSimTime currentTime = modelState.getCurrentTime();
     DeliveryRoute deliveryRoute = modelState.getDeliveryRoute();

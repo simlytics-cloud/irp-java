@@ -24,6 +24,11 @@ import iso.example.irpsystem.irpmodel.ExperimentalFrame.Transducer;
 import iso.example.irpsystem.irpmodel.ExperimentalFrame.TransducerState;
 import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 
+/**
+ * Factory for building the Basic Experimental Frame for the Inventory Routing Problem simulation.
+ * This factory creates the delivery schedule generators, transducers, and the
+ * internal inventory routing factory.
+ */
 public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFrameFactory {
 
     protected final IrpData irpData;
@@ -31,11 +36,25 @@ public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFram
     Config kafkaConsumerConfig;
     Config kafkaProducerConfig;
 
+    /**
+     * Constructs a new BasicExperimentalFrameFactory.
+     *
+     * @param irpData         The data defining the IRP problem instance.
+     * @param localSystemName The name of the local system.
+     */
     public BasicExperimentalFrameFactory(IrpData irpData, String localSystemName) {
         this.irpData = irpData;
         this.localSystemName = localSystemName;
     }
 
+    /**
+     * Constructs a new BasicExperimentalFrameFactory with Kafka configurations.
+     *
+     * @param irpData              The data defining the IRP problem instance.
+     * @param localSystemName      The name of the local system.
+     * @param kafkaConsumerConfig  Configuration for Kafka consumers.
+     * @param kafkaProducerConfig  Configuration for Kafka producers.
+     */
     public BasicExperimentalFrameFactory(IrpData irpData, String localSystemName,
         Config kafkaConsumerConfig,
         Config kafkaProducerConfig) {
@@ -45,6 +64,13 @@ public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFram
         this.kafkaProducerConfig = kafkaProducerConfig;
     }
 
+    /**
+     * Builds the delivery schedule generators.
+     * In this implementation, it creates a simple greedy delivery schedule
+     * based on the problem data.
+     *
+     * @return A list containing the configured DeliveryScheduleGenerator.
+     */
     @Override
     protected List<DeliveryScheduleGenerator> buildDeliveryScheduleGenerators() {
         Map<Integer, Map<Integer, DeliveryRoute>> deliveriesByDayByVehicle = new HashMap<>();
@@ -94,6 +120,12 @@ public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFram
         return List.of(deliveryScheduleGenerator);
     }
 
+    /**
+     * Builds the transducers for the experimental frame.
+     * Transducers are used to collect and aggregate results from the simulation.
+     *
+     * @return A list containing the configured Transducer.
+     */
     @Override
     protected List<Transducer> buildTransducers() {
         TransducerState transducerState = TransducerState.builder()
@@ -104,6 +136,11 @@ public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFram
         return List.of(transducer);
     }
 
+    /**
+     * Builds the factory for the internal Inventory Routing coupled model.
+     *
+     * @return The configured AbstractBasicInventoryRoutingFactory.
+     */
     @Override
     protected AbstractBasicInventoryRoutingFactory buildBasicInventoryRoutingFactory() {
         BasicInventoryRoutingFactory inventoryRoutingFactory;
@@ -116,6 +153,11 @@ public class BasicExperimentalFrameFactory extends AbstractBasicExperimentalFram
         return inventoryRoutingFactory;
     }
 
+    /**
+     * Builds and returns a CoupledModelFactory for the entire experimental frame.
+     *
+     * @return The configured CoupledModelFactory.
+     */
     public CoupledModelFactory<LongSimTime> buiCoupledModelFactory() {
         List<SimulatorProvider<LongSimTime>> simulationProviders = new ArrayList<>();
         List<DeliveryScheduleGenerator> deliveryScheduleGenerators = buildDeliveryScheduleGenerators();

@@ -38,6 +38,12 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.Vehicle;
 import iso.example.irpsystem.irpmodel.InventoryRouting.VehicleState;
 import iso.example.irpsystem.irpmodel.impl.IrpData.RetailerData;
 
+/**
+ * Factory for building the Basic Inventory Routing coupled model.
+ * This factory creates and configures manufacturers, retailers, and vehicles,
+ * and sets up the couplings between them. It also handles local and remote (Kafka-based)
+ * simulator providers.
+ */
 public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingFactory {
 
     private final IrpData irpData;
@@ -45,11 +51,25 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
     Config kafkaConsumerConfig;
     Config kafkaProducerConfig;
 
+    /**
+     * Constructs a new BasicInventoryRoutingFactory.
+     *
+     * @param irpData         The data defining the IRP problem instance.
+     * @param localSystemName The name of the local system (used to distinguish local vs. remote components).
+     */
     public BasicInventoryRoutingFactory(IrpData irpData, String localSystemName) {
         this.irpData = irpData;
         this.localSystemName = localSystemName;
     }
 
+    /**
+     * Constructs a new BasicInventoryRoutingFactory with Kafka configurations.
+     *
+     * @param irpData              The data defining the IRP problem instance.
+     * @param localSystemName      The name of the local system.
+     * @param kafkaConsumerConfig  Configuration for Kafka consumers.
+     * @param kafkaProducerConfig  Configuration for Kafka producers.
+     */
     public BasicInventoryRoutingFactory(IrpData irpData, String localSystemName,
         Config kafkaConsumerConfig, Config kafkaProducerConfig) {
         this.irpData = irpData;
@@ -58,6 +78,13 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
         this.kafkaProducerConfig = kafkaProducerConfig;
     }
 
+    /**
+     * Builds the couplings between the components of the Inventory Routing system.
+     * Defines how messages (delivery schedules, routes, costs) flow between
+     * the manufacturer, vehicles, and retailers.
+     *
+     * @return The configured PDevsCouplings.
+     */
     @Override
     protected PDevsCouplings buildCouplings() {
 
@@ -96,6 +123,12 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
         return couplings;
     }
 
+    /**
+     * Helper method to build a ManufacturerImpl from IrpData.
+     *
+     * @param irpData The problem data.
+     * @return A new ManufacturerImpl instance.
+     */
     public static ManufacturerImpl buildManufacturer(IrpData irpData) {
         ImmutableManufacturerProperties properties = ImmutableManufacturerProperties.builder()
             .dailyProduction(irpData.manufacturer().dailyProduction())
@@ -128,6 +161,13 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
         return vehicles;
     }
 
+    /**
+     * Helper method to build a VehicleImpl from vehicle ID and IrpData.
+     *
+     * @param vehicleId The ID of the vehicle.
+     * @param irpData   The problem data.
+     * @return A new VehicleImpl instance.
+     */
     public static VehicleImpl buildVehicle(int vehicleId, IrpData irpData) {
         ImmutableVehicleProperties vehicleProperties = ImmutableVehicleProperties.builder()
             .vehicleId(vehicleId)
@@ -141,8 +181,8 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
             .build();
         VehicleState vehicleState = VehicleState.builder()
             .location(Coordinate.builder()
-                .x(0.0)
-                .y(0.0)
+                .x(irpData.manufacturer().x())
+                .y(irpData.manufacturer().y())
                 .build())
             .deliveryRoute(DeliveryRoute.builder().vehicleId(vehicleId).build())
             .dailyKmTraveled(0.0)
@@ -163,6 +203,12 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
         return retailers;
     }
 
+    /**
+     * Helper method to build a Retailer from RetailerData.
+     *
+     * @param retailerData The data for a single retailer.
+     * @return A new RetailerImpl instance.
+     */
     public static Retailer buildRetailer(RetailerData retailerData) {
         ImmutableRetailerState retailerState = ImmutableRetailerState.builder()
             .currentInventory(retailerData.startingInventory())
@@ -231,6 +277,13 @@ public class BasicInventoryRoutingFactory extends AbstractBasicInventoryRoutingF
         return retailerProviders;
     }
 
+    /**
+     * Builds and returns a CoupledModelFactory for the Inventory Routing system.
+     * Decides whether to use a standard CoupledModelFactory or a Kafka-based one
+     * depending on if any components are remote.
+     *
+     * @return The configured CoupledModelFactory.
+     */
     public CoupledModelFactory<LongSimTime> buildCoupledModelFactory() {
         List<SimulatorProvider<LongSimTime>> simulatorProviders = new ArrayList<>();
         simulatorProviders.addAll(buildVehicleSimulatorProviders());

@@ -19,13 +19,34 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.Manufacturer;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
 import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
+/**
+ * Implementation of a Manufacturer in the Inventory Routing Problem (IRP) simulation.
+ * The manufacturer produces products daily, updates inventory, reports inventory costs,
+ * and schedules delivery routes to vehicles.
+ */
 public class ManufacturerImpl extends Manufacturer<ImmutableManufacturerProperties, ManufacturerState, ImmutableManufacturerState> {
 
+    /**
+     * Event to signal an inventory update.
+     */
     protected record UpdateInventory() {
     }
+
+    /**
+     * Event to signal the posting of a delivery route to a vehicle.
+     *
+     * @param immutableDeliveryRoute The delivery route to be posted.
+     */
     protected record PostDelveryRoute(ImmutableDeliveryRoute immutableDeliveryRoute) {
     };
 
+    /**
+     * Constructs a new ManufacturerImpl.
+     *
+     * @param initialState    The initial state of the manufacturer.
+     * @param modelIdentifier The unique identifier for this manufacturer model.
+     * @param properties      The static properties of the manufacturer (production rate, etc.).
+     */
     public ManufacturerImpl(ImmutableManufacturerState initialState,
             String modelIdentifier, ImmutableManufacturerProperties properties) {
         super(initialState, modelIdentifier, properties);
@@ -34,6 +55,11 @@ public class ManufacturerImpl extends Manufacturer<ImmutableManufacturerProperti
             TimeUtils.MANUFACTURER_REPORT_DURATION), new UpdateInventory());
     }
 
+    /**
+     * Processes internal scheduled events such as inventory updates and posting delivery routes.
+     *
+     * @param events The list of events to process.
+     */
     @Override
     public void handleScheduledEvents(List<Object> events) {
 
@@ -77,12 +103,25 @@ public class ManufacturerImpl extends Manufacturer<ImmutableManufacturerProperti
         }       
     }
 
+    /**
+     * Handles simultaneous internal and external transitions.
+     * Executes the internal transition followed by the external transition.
+     *
+     * @param inputs The list of port values received as input.
+     */
     @Override
     public void confluentStateTransitionFunction(List<PortValue<?>> inputs) {
         internalStateTransitionFunction();
         externalStateTransitionFunction(LongSimTime.create(0), inputs);
     }
 
+    /**
+     * Handles the acceptance of a new delivery schedule.
+     * Schedules internal events to post delivery routes to vehicles at the start of each day.
+     *
+     * @param immutableDeliverySchedule The new delivery schedule to follow.
+     * @param elapsedTime               The time elapsed since the last state transition.
+     */
     @Override
     protected void handleAcceptDeliverySchedule(ImmutableDeliverySchedule immutableDeliverySchedule,
             LongSimTime elapsedTime) {
@@ -101,6 +140,13 @@ public class ManufacturerImpl extends Manufacturer<ImmutableManufacturerProperti
         }
     }
 
+    /**
+     * Handles the acceptance of returned products from a vehicle.
+     * Increases the manufacturer's inventory by the returned amount.
+     *
+     * @param immutableDelivery The delivery details of the returned products.
+     * @param elapsedTime       The time elapsed since the last state transition.
+     */
     @Override
     protected void handleAcceptDelivery(ImmutableDelivery immutableDelivery, LongSimTime elapsedTime) {
         modelState.setCurrentInventory(modelState.getCurrentInventory() + immutableDelivery.getProductAmount());

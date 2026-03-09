@@ -22,10 +22,24 @@ public class TimeUtils {
     public static Duration OPENING_DURATION = Duration.ofHours(OPENING_HOUR);
     public static Duration MANUFACTURER_REPORT_DURATION = Duration.ofDays(1).minus(Duration.ofMinutes(1));
     
+    /**
+     * Converts a given simulation time to a {@link Duration} object representing the equivalent
+     * elapsed time in minutes.
+     *
+     * @param simTime the simulation time object containing the time in minutes
+     * @return a {@link Duration} instance representing the same amount of time as the given simulation time
+     */
     public static Duration simTimeToDuration(LongSimTime simTime) {
         return Duration.ofMinutes(simTime.getT());
     }
 
+    /**
+     * Converts a given {@link Duration} object into a {@link LongSimTime} object representing
+     * the equivalent time in simulation minutes.
+     *
+     * @param duration the {@link Duration} object to be converted
+     * @return a {@link LongSimTime} instance representing the time in simulation minutes
+     */
     public static LongSimTime durationToSimTime(Duration duration) {
         return LongSimTime.create(duration.toMinutes());
     }

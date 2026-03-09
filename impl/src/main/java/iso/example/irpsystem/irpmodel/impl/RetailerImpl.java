@@ -14,11 +14,26 @@ import iso.example.irpsystem.irpmodel.InventoryRouting.ImmutableRetailerState;
 import iso.example.irpsystem.irpmodel.InventoryRouting.Retailer;
 import iso.example.irpsystem.irpmodel.algorithms.TimeUtils;
 
+/**
+ * Implementation of a Retailer in the Inventory Routing Problem (IRP) simulation.
+ * The retailer receives deliveries from vehicles, consumes products daily,
+ * and reports inventory costs at the end of each day.
+ */
 public class RetailerImpl extends Retailer<ImmutableRetailerProperties, RetailerState, ImmutableRetailerState> {
 
+    /**
+     * Event to signal a daily inventory update and cost reporting.
+     */
     static record UpdateInventoryEvent() {
     }
 
+    /**
+     * Constructs a new RetailerImpl.
+     *
+     * @param initialState    The initial state of the retailer.
+     * @param modelIdentifier The unique identifier for this retailer model.
+     * @param properties      The static properties of the retailer (consumption rate, capacity, etc.).
+     */
     public RetailerImpl(ImmutableRetailerState initialState, String modelIdentifier,
             ImmutableRetailerProperties properties) {
         super(initialState, modelIdentifier, properties);
@@ -26,11 +41,23 @@ public class RetailerImpl extends Retailer<ImmutableRetailerProperties, Retailer
         modelState.getSchedule().scheduleInternalEvent(TimeUtils.durationToSimTime(TimeUtils.CLOSING_DURATION), new UpdateInventoryEvent());
     }
 
+    /**
+     * Handles the receipt of a delivery from a vehicle.
+     * Increases the retailer's current inventory by the delivered amount.
+     *
+     * @param immutableDelivery The delivery details, including the product amount.
+     * @param elapsedTime       The time elapsed since the last state transition.
+     */
     @Override
     protected void handleReceiveDelivery(ImmutableDelivery immutableDelivery, LongSimTime elapsedTime) {
         modelState.setCurrentInventory(modelState.getCurrentInventory() + immutableDelivery.getProductAmount());
     }
 
+    /**
+     * Processes internal scheduled events, specifically daily inventory updates and cost reporting.
+     *
+     * @param events The list of events to process.
+     */
     @Override
     public void handleScheduledEvents(List<Object> events) {
         for (Object event: events) {
@@ -75,6 +102,12 @@ public class RetailerImpl extends Retailer<ImmutableRetailerProperties, Retailer
         }
     }
 
+    /**
+     * Handles simultaneous internal and external transitions.
+     * Executes the internal transition followed by the external transition.
+     *
+     * @param inputs The list of port values received as input.
+     */
     @Override
     public void confluentStateTransitionFunction(List<PortValue<?>> inputs) {
         internalStateTransitionFunction();

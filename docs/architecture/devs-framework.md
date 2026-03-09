@@ -1,6 +1,6 @@
 # DEVS Framework
 
-The Inventory Routing Problem (IRP) simulation is built using a custom implementation of the **Discrete Event System Specification (DEVS)** and its parallel version, **Parallel DEVS (PDevs)**. This framework provides a mathematically rigorous way to define how models transition between states and communicate via discrete events.
+The Inventory Routing Problem (IRP) simulation is built on top of the **[DEVS Streaming Framework](https://github.com/simlytics-cloud/devs-streaming)**, a robust implementation of the **Discrete Event System Specification (DEVS)** and its parallel version, **Parallel DEVS (PDevs)**. This framework provides a mathematically rigorous way to define how models transition between states and communicate via discrete events.
 
 ## DEVS/PDevs Implementation
 
@@ -13,11 +13,22 @@ Each model in the simulation transitions through several functions:
 - **Output Function**: Generates output events before an internal transition takes place.
 - **Time Advance Function**: Determines the time interval until the next internal event.
 
+The DEVS models implemented in this project use a specialized [ScheduleDevsModel](https://github.com/simlytics-cloud/devs-streaming/blob/main/src/main/java/devs/ScheduledDevsModel.java) that has an internal event schedule and current time in its state.
+
 ## Simulation Execution via Pekko Actors
 
 The simulation's engine is built using **Apache Pekko**, an actor-based concurrency framework. Each DEVS model is wrapped by a simulator actor, and coupled models are managed by coordinator actors. This design ensures that simulation time remains synchronized across all models, even when they are executing on different threads or distributed across a network.
 
 The simulator actors follow a well-defined lifecycle, receiving and processing messages like `SimulationInit`, `CollectOutputs`, and `InternalTransition`. This lifecycle ensures that the simulation proceeds in discrete steps, maintaining the logical order of events.
+
+## Core Framework Features
+
+The DEVS Streaming Framework provides the foundational infrastructure for the IRP simulation:
+
+- **Core DEVS Engine**: Implements the simulators and coordinators required for Parallel DEVS, ensuring synchronization and correct event ordering.
+- **Port-Based Communication**: Facilitates decoupled model design where components communicate via standardized ports rather than direct references.
+- **Streaming and Distribution**: Built-in support for Apache Kafka, allowing simulation events to be streamed across distributed systems via the emerging ISO 21175 [collaborative simulation](./collaborative-simulation.md) standard
+- **Proxy Mechanisms**: Includes `KafkaLocalProxy` and `KafkaDevsStreamProxyProvider`, which  bridge local simulators with remote components running on different hosts.
 
 ## Port-Based Communication
 

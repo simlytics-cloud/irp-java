@@ -16,6 +16,6 @@ A transducer aggregates all cost reports from the manufacturer, retailers, and v
 
 ## High-Level System Design
 
-The system is built on top of a custom DEVS framework implemented using Apache Pekko for actor-based simulation. This architecture allows the simulation to be highly modular and extensible. Components can be easily swapped or extended to explore different inventory management and routing algorithms.
+The system is built on top of the **[DEVS Streaming Framework](devs-framework.md)**, which provides a robust implementation of the DEVS and Parallel DEVS (PDevs) formalisms. By utilizing **Apache Pekko** for actor-based simulation, the architecture achieves high modularity, extensibility, and scalability.
 
-The architecture is also designed for distribution. Using Kafka as a messaging middleware, components can run on different host systems while maintaining a unified simulation clock and event-passing mechanism. This satisfies the requirements for collaborative modeling as defined in the ISO 21175 draft standard.
+This design allows simulation components like manufacturers, retailers, and vehicles to be easily swapped or extended. Furthermore, the framework's integration with **Apache Kafka** enables distributed and collaborative modeling, allowing different participants to contribute models that run on separate host systems while maintaining a unified simulation clock.

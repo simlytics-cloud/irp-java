@@ -4,27 +4,27 @@ The Inventory Routing Problem (IRP) in this simulation is a coordinated supply c
 
 ![Inventory Routing to Scale](inventory_routing_to_scale.png){width=50%}
 
-*The figure above shows a typical IRP scenario with one manufacturer (Node 0), five retailers (Nodes 1-5), and two vehicles. Each node is labeled with its starting inventory (SI), daily consumption or production rate (Cons/Prod), and maximum inventory capacity (Max).*
+*The figure above shows a typical IRP scenario with one manufacturer, five retailers (Nodes 0-4), and two vehicles. Each node is labeled with its starting inventory (SI), daily consumption or production rate (Cons/Prod), and maximum inventory capacity (Max).*
 
 ## Core Rules and Element Behaviors
 
 The simulation is governed by specific rules for each of the three primary elements: the Manufacturer, the Retailers, and the Vehicles.
 
-### 1. The Manufacturer (Node 0)
+### 1. The Manufacturer
 The manufacturer is the source of all products in the system and acts as the central coordinator for deliveries.
 
-*   **Production**: The manufacturer produces a fixed amount of product every day (`dailyProduction`). This inventory is added to its current stock at a specific time (e.g., at the end of the day or early morning).
+*   **Production**: The manufacturer produces a fixed amount of product every day (`dailyProduction`). This inventory is added to its current stock at 11:59 PM daily.
 *   **Inventory Holding**: Like retailers, the manufacturer incurs a daily cost for holding inventory. The goal is to keep this inventory as low as possible by shipping products out.
-*   **Scheduling**: The manufacturer receives a predefined delivery schedule and is responsible for "loading" vehicles at the start of each day. It subtracts the total amount loaded from its current inventory and posts the routes to the respective vehicles.
+*   **Scheduling**: The manufacturer receives a predefined delivery schedule and is responsible for "loading" vehicles at 6:00 AM daily. It subtracts the total amount loaded from its current inventory and posts the routes to the respective vehicles.
 *   **Returns**: If a vehicle returns to the manufacturer with undelivered products (e.g., due to time constraints or capacity issues), the manufacturer accepts these returns and adds them back to its inventory.
 
-### 2. Retailers (Nodes 1-5)
+### 2. Retailers (Nodes 0-4)
 Retailers are the end points of the supply chain, each with its own consumption pattern and storage limits.
 
-*   **Consumption**: Each retailer consumes a fixed amount of product daily (`dailyConsumption`). This consumption reduces the retailer's inventory level at a set time each day.
-*   **Inventory Capacity**: Every retailer has a `maxInventory` limit. If a delivery exceeds this capacity, the retailer only accepts enough to fill its storage, and the remainder is returned with the vehicle.
+*   **Consumption**: Each retailer consumes a fixed amount of product daily (`dailyConsumption`). This consumption reduces the retailer's inventory level at 4:00 PM closing time each day.
+*   **Inventory Capacity**: Every retailer has a `maxInventory` limit. If a delivery exceeds this capacity, this will be recorded in the system output.
 *   **Safety Stock**: Retailers also have a `minInventory` target. While the simulation continues even if inventory drops below this level, it is considered a performance failure and may be logged as an error or reflected in higher costs.
-*   **Cost Reporting**: Retailers report their daily holding costs based on their current inventory level and a site-specific unit cost.
+*   **Cost Reporting**: Retailers report their daily holding costs daily at closing time based on their current inventory level and a site-specific unit cost.
 
 ### 3. Vehicles
 Vehicles are the mobile agents that bridge the gap between the manufacturer and the retailers.

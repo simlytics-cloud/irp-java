@@ -2,6 +2,24 @@
 
 This guide provides the basic instructions for building, running, and testing the Inventory Routing Problem (IRP) simulation. Whether you are running a simple local simulation or setting up a distributed collaborative environment, these steps will help you get started.
 
+## Prerequisites
+
+Before building the Inventory Routing Problem simulation, you must first install the **DEVS Streaming Framework**. This is a core dependency that provides the underlying DEVS/PDevs engine, Pekko actor support, and Kafka proxy mechanisms.
+
+### Installing the DEVS Streaming Framework
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/simlytics-cloud/devs-streaming.git
+    ```
+2.  **Install to your local Maven repository**:
+    Navigate to the `devs-streaming` directory and run:
+    ```bash
+    mvn clean install
+    ```
+
+Once the framework is installed locally, you can proceed to build the IRP simulation.
+
 ## Building the Project
 
 The project is built using Maven and Java. To compile all source files and generate the required DEVS models, run the following command from the root directory:

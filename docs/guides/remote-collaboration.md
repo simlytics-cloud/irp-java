@@ -67,5 +67,19 @@ To run these tests:
 1.  **Start Kafka**: Use the provided Docker Compose configuration to start a local Kafka cluster and management UI. For detailed instructions, see the [Local Kafka Setup Guide](../../kafka/running-local-kafka.md).
 2.  **Enable the Test**: These tests are marked with `@Disabled("Requires Kafka Connection")` by default. Remove the `@Disabled` annotation to enable them.
 3.  **Execute the Test**: Run the specific test method using your IDE or Maven.
+4. To test again, you will need to recreate the Kafka topic before running another test.  The topic should be empty at the start.
 
-The test will attempt to connect to Kafka, subscribe to the simulation topic, and verify that messages are correctly passed between the local simulator and the (simulated) remote proxy. This confirms that your model's network interface and DEVS logic are compatible with the collaborative environment.
+The test will attempt to connect to Kafka, subscribe to the simulation topic, and verify that messages are correctly passed between the local simulator and the (simulated) remote proxy. This confirms that your model's network interface and DEVS logic are compatible with the collaborative environment.  For debugging, you can use the kafka-ui interface to view messages in the order they were posted to a topic.  To see a full set of messages, start Kafka and run a full simulation configured with the local proxies configuration uncommented in [reference.conf](../../impl/src/main/resources/reference.conf) as follows:
+
+```aiignore
+irp-routing-app {
+  # JSON data structure for the IRP System definition
+  irp-data-file = "S_abs1n5_2_L3_local_proxies.json"
+  # irp-data-file = "S_abs1n5_2_L3.json"
+  # irp-data-file = "S_abs1n5_2_L3_all_local.json"
+
+  # The name of the local system for determining which models to run locally
+  local-system-name = "LocalJava"
+  local-proxy-name = "RemoteRunnersJava"
+}
+```

@@ -1,6 +1,6 @@
 # Inventory Routing Problem (IRP) Simulation
 
-This project provides a comprehensive, discrete-event simulation of the **Inventory Routing Problem (IRP)**. It is built using a custom Parallel DEVS (PDevs) framework on top of Apache Pekko and is designed to support **Collaborative Modeling and Simulation (C&S)** in alignment with the **ISO 21175** draft standard.
+This project provides a comprehensive, discrete-event simulation of the **Inventory Routing Problem (IRP)**. It is built using the **[DEVS Streaming Framework](https://github.com/simlytics-cloud/devs-streaming)**, which implements the mathematically rigorous Parallel DEVS (PDevs) formalism on top of Apache Pekko. The simulation is designed to support **Collaborative Modeling and Simulation (C&S)** in alignment with the **ISO 21175** draft standard.
 
 ## Overview
 

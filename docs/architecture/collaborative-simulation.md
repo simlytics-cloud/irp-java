@@ -1,6 +1,6 @@
 # Collaborative Simulation
 
-The Inventory Routing Problem (IRP) library is a reference implementation of a **Collaborative Modeling and Simulation (C&S)** environment, as described in the **ISO 21175** draft standard. This standard provides a framework for integrating diverse, distributed simulation models into a unified execution environment.
+The Inventory Routing Problem (IRP) library is a reference implementation of a **Collaborative Modeling and Simulation Environment (CMSE)**, as described in the **ISO 21175** draft standard. This standard provides a framework for integrating diverse, distributed simulation models into a unified execution environment.
 
 ## Distributed Simulation Architecture
 
@@ -27,9 +27,9 @@ This mechanism ensures that the simulation logic remains consistent, regardless 
 ## ISO 21175 Compliance
 
 The project aligns with the core principles of the ISO 21175 standard:
-- **Standardized Interfaces**: Using the DEVS formalism to ensure rigorous and interoperable communication between models.
+- **Standardized Interfaces**: Using the DEVS formalism to ensure interoperable communication between models.
 - **Middleware Interoperability**: Demonstrating how messaging systems like Kafka can facilitate simulation synchronization.
 - **Configuration-Driven Composition**: Allowing for "Plug-and-Play" simulation where models can be swapped between local and remote hosts through simple JSON configuration updates.
 - **Verification and Validation**: Providing a framework to test models in isolation and as part of a distributed system.
 
-By following this standard, the IRP library provides a robust foundation for building large-scale, collaborative simulations where different organizations can contribute their specialized models to a unified supply chain simulation federation.
+By following this standard, the IRP library provides a robust foundation for building collaborative simulations where different organizations can contribute their specialized models to a unified supply chain simulation federation.

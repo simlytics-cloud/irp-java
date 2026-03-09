@@ -1,6 +1,6 @@
 # Inventory Routing Problem Simulation Wiki
 
-Welcome to the documentation for the Inventory Routing Problem (IRP) simulation. This project provides a full-running implementation of a collaborative supply chain simulation based on the **ISO 21175** draft standard for Collaborative Modeling and Simulation (C&S).
+Welcome to the documentation for the Inventory Routing Problem (IRP) simulation. This project provides a full-running implementation of a collaborative supply chain simulation based on the **ISO 21175** draft standard for Collaborative Modeling and Simulation Environment (CMSE).
 
 The library is designed not only as a complete simulation app but also as a framework for collaborators to build and test their own remote instances of supply chain components like Vehicles, Retailers, or Manufacturers.
 
@@ -9,7 +9,7 @@ The library is designed not only as a complete simulation app but also as a fram
 - **[Architecture Overview](architecture/overview.md)**: A high-level view of the system design and the goals of the Inventory Routing Problem.
 - **[IRP Definition](architecture/irp-definition.md)**: A complete definition of the Inventory Routing Problem, including the rules for the manufacturer, retailers, and vehicles.
 - **[DEVS Framework](architecture/devs-framework.md)**: Detailed explanation of the underlying Parallel DEVS (PDevs) implementation.
-- **[Collaborative Simulation](architecture/collaborative-simulation.md)**: How the system uses Apache Kafka to enable distributed, multi-participant simulations in compliance with ISO 21175.
+- **[Collaborative Simulation](architecture/collaborative-simulation.md)**: How the system uses Apache Kafka to enable distributed, multi-participant simulations in compliance with emerging ISO 21175 standard.
 - **Models**: Detailed logic for the core simulation components:
     - **[Manufacturer](models/manufacturer.md)**
     - **[Retailer](models/retailer.md)**

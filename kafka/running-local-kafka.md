@@ -32,6 +32,7 @@ While the simulation is configured to auto-create topics, it is often useful to 
 2.  In the sidebar, click on **Topics**.
 3.  Click the **Add a Topic** button in the top right.
 4.  Enter the topic name (e.g., `irp-system`, as used in the default configurations).
+5.  **CRITICAL** Set Nuber of Partitions to 1 and Number of Replicas to 1.  This is necessary for the simulation to work properly.
 5.  Click **Create** at the bottom of the form.
 
 ## Viewing Messages from an IRP Run
